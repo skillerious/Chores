@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Family Chores</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="device">
+        <!-- SETUP (first time, no password yet) -->
+        <section id="setup-screen" class="view view-auth hidden">
+          <header class="auth-topbar">
+            <div class="brand-pill">Family Chores</div>
+            <div class="brand-meta">Local • Private • Yours</div>
+          </header>
+          <div class="auth-body">
+            <div class="auth-heading">
+              <h1>Welcome 👋</h1>
+              <p>Create a password for this device. Use the same one on your other phone.</p>
+            </div>
+            <div class="auth-card">
+              <div class="auth-card-head">
+                <div class="auth-icon">FC</div>
+                <div>
+                  <h2>Create password</h2>
+                  <p class="muted">Stored locally — never sent.</p>
+                </div>
+              </div>
+              <label class="field">
+                <span>New password</span>
+                <input type="password" id="setup-password" autocomplete="new-password" />
+              </label>
+              <label class="field">
+                <span>Confirm password</span>
+                <input type="password" id="setup-password2" autocomplete="new-password" />
+              </label>
+              <button id="setup-save" class="btn-primary">Save on this device</button>
+              <p id="setup-error" class="error-text hidden">Passwords don’t match.</p>
+              <p class="small muted-top">You can reset this device from the login screen.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- LOGIN / UNLOCK -->
+        <section id="lock-screen" class="view login-screen hidden">
+          <div class="login-shell">
+            <!-- new inner wrapper so the card is full width but controls have padding -->
+            <div class="login-content">
+              <div class="login-head">
+                <div class="login-pill">
+                  <span class="pill-dot"></span>
+                  Family Chores
+                </div>
+                <h1>Unlock the board</h1>
+                <p>Enter the password you saved on this device.</p>
+              </div>
+
+              <div class="login-form">
+                <label class="login-field">
+                  <span>Password</span>
+                  <input
+                    type="password"
+                    id="lock-password"
+                    autocomplete="current-password"
+                    placeholder="••••••••"
+                  />
+                </label>
+
+                <label class="login-toggle">
+                  <input type="checkbox" id="lock-remember" checked />
+                  <span>Remember this device</span>
+                </label>
+
+                <button id="lock-unlock" class="login-btn">Unlock</button>
+                <p id="lock-error" class="login-error hidden">Incorrect password.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="login-footer">
+            <button id="lock-reset" class="login-footer-btn" type="button">
+              Reset this device
+            </button>
+            <p class="login-footer-note">Clears password & chores on this browser only.</p>
+          </div>
+        </section>
+
+        <!-- MAIN APP -->
+        <section id="main-screen" class="view hidden">
+          <!-- header -->
+          <header class="main-header">
+            <div>
+              <h1>Family Chores</h1>
+              <p id="payout-text" class="muted">Payout on 15th</p>
+            </div>
+            <div class="header-actions">
+              <select id="period-select" class="pill-select">
+                <option value="current">Current</option>
+                <option value="month">This month</option>
+                <option value="all">All time</option>
+              </select>
+              <button id="logout" class="circle-btn" title="Lock">⤫</button>
+            </div>
+          </header>
+
+          <!-- scroll -->
+          <main class="main-scroll" id="main-scroll">
+            <section class="stat-grid">
+              <article class="stat-card">
+                <p class="label">Total this period</p>
+                <h2 id="metric-total">£0.00</h2>
+                <p class="hint">15th payout basis</p>
+              </article>
+              <article class="stat-card">
+                <p class="label">Chores logged</p>
+                <h2 id="metric-chores">0</h2>
+                <p class="hint" id="metric-active-child">4 children</p>
+              </article>
+              <article class="stat-card stat-card-full">
+                <p class="label">Top earner</p>
+                <h2 id="metric-top">—</h2>
+                <p class="hint">This period</p>
+              </article>
+            </section>
+
+            <section class="block" id="children-section">
+              <header class="block-head">
+                <h2>Children</h2>
+                <p>Tap + chore to add items.</p>
+              </header>
+              <div id="children-grid" class="children-grid"></div>
+            </section>
+
+            <section class="block" id="activity-section">
+              <header class="block-head">
+                <h2>Recent activity</h2>
+                <p>Last 10 chores entered.</p>
+              </header>
+              <div id="activity-list" class="activity-list"></div>
+            </section>
+
+            <div class="scroll-bottom-space"></div>
+          </main>
+
+          <!-- bottom nav -->
+          <nav class="bottom-nav">
+            <button class="nav-item active" data-nav="home">
+              <span class="nav-icon">🏠</span>
+              <span class="nav-text">Home</span>
+            </button>
+            <button class="nav-item" data-nav="activity">
+              <span class="nav-icon">📝</span>
+              <span class="nav-text">Activity</span>
+            </button>
+            <button class="nav-item" data-nav="device">
+              <span class="nav-icon">⚙️</span>
+              <span class="nav-text">Device</span>
+            </button>
+          </nav>
+
+          <!-- fab -->
+          <button id="fab-add" class="fab">＋</button>
+
+          <!-- add chore sheet -->
+          <div id="chore-sheet" class="sheet hidden" aria-modal="true">
+            <div class="sheet-overlay" data-close="sheet"></div>
+            <div class="sheet-body">
+              <div class="sheet-handle"></div>
+              <div class="sheet-header">
+                <h2>Add chore</h2>
+                <button id="chore-sheet-close" class="circle-btn small" aria-label="Close">✕</button>
+              </div>
+              <form id="chore-form" class="sheet-form">
+                <label class="field">
+                  <span>Child</span>
+                  <select id="chore-child"></select>
+                </label>
+                <label class="field">
+                  <span>Chore title</span>
+                  <input type="text" id="chore-title" placeholder="Clean bedroom" required />
+                </label>
+                <label class="field">
+                  <span>Amount (£)</span>
+                  <input
+                    type="number"
+                    id="chore-amount"
+                    step="0.01"
+                    min="0"
+                    placeholder="5"
+                    required
+                  />
+                </label>
+                <button type="submit" class="btn-primary">Save chore</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- settings sheet -->
+          <div id="settings-sheet" class="sheet hidden" aria-modal="true">
+            <div class="sheet-overlay" data-close="settings"></div>
+            <div class="sheet-body small">
+              <div class="sheet-handle"></div>
+              <div class="sheet-header">
+                <h2>Device</h2>
+                <button id="settings-close" class="circle-btn small" aria-label="Close">✕</button>
+              </div>
+              <div class="settings-content">
+                <p class="muted small">
+                  This app stores everything in your browser (password & chores).
+                </p>
+                <button id="settings-reset" class="btn-outline danger">Reset this device</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script src="renderer.js" type="module"></script>
+  </body>
+</html>
