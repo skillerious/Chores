@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  --surface: #121318;           /* shared surface for login + dashboard */
+  --surface: #121318;               /* shared surface for login + dashboard */
   --surface-subtle: #111218;
   --line: rgba(255, 255, 255, 0.02);
   --text: #f3f6ff;
@@ -10,7 +10,7 @@
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* ✅ this is what was missing */
+/* critical for your JS showView(...) */
 .hidden {
   display: none !important;
 }
@@ -23,18 +23,18 @@
 
 body {
   margin: 0;
-  background: #121318; /* same as login/dashboard */
+  background: #121318;
   min-height: 100vh;
 }
 
-/* ========= APP SHELL / DEVICE (MAIN) ========= */
-/* make the outer shell just fill the screen, no centering */
+/* =========================
+   APP SHELL / DEVICE
+   ========================= */
 .app-shell {
   width: 100%;
   height: 100vh;
 }
 
-/* remove the card look */
 .device {
   width: 100%;
   height: 100vh;
@@ -58,14 +58,14 @@ body {
 }
 
 /* =========================
-   SETUP SCREEN (can stay narrow-ish look because it's first-time)
+   SETUP SCREEN
    ========================= */
 .view-auth {
   flex: 1;
   background: #121318;
   display: flex;
   flex-direction: column;
-  padding-bottom: 70px; /* avoid overlapping the fixed nav, just in case */
+  padding-bottom: 70px;
 }
 
 .auth-topbar {
@@ -184,7 +184,7 @@ select:focus {
 }
 
 /* =========================
-   LOGIN SCREEN (already correct)
+   LOGIN SCREEN
    ========================= */
 #lock-screen.login-screen {
   position: fixed;
@@ -337,13 +337,12 @@ select:focus {
 }
 
 /* =========================
-   MAIN APP — FLAT, NO CARD
+   MAIN APP — FLAT
    ========================= */
 #main-screen.view {
   background: #121318;
 }
 
-/* flat header at top */
 .main-header {
   display: flex;
   justify-content: space-between;
@@ -381,15 +380,15 @@ select:focus {
   cursor: pointer;
 }
 
-/* scroll area — we leave a bottom pad so content never hides behind nav */
+/* scrollable content — leave space for fixed nav + safe area */
 .main-scroll {
   flex: 1 1 auto;
   overflow-y: auto;
   background: #121318;
-  padding: 0 0 80px 0; /* 80px to clear the fixed nav */
+  padding: 0 0 calc(80px + env(safe-area-inset-bottom, 0px)) 0;
 }
 
-/* stats flattened */
+/* flattened panels */
 .stat-grid {
   display: flex;
   flex-direction: column;
@@ -415,7 +414,6 @@ select:focus {
   color: rgba(243, 246, 255, 0.4);
 }
 
-/* blocks flattened */
 .block {
   background: transparent;
   border-bottom: 1px solid rgba(255, 255, 255, 0.02);
@@ -437,7 +435,7 @@ select:focus {
   color: var(--muted);
 }
 
-/* children flattened */
+/* children */
 .children-grid {
   display: flex;
   flex-direction: column;
@@ -498,7 +496,7 @@ select:focus {
   cursor: pointer;
 }
 
-/* activity flattened */
+/* activity */
 .activity-list {
   display: flex;
   flex-direction: column;
@@ -528,11 +526,11 @@ select:focus {
 }
 
 /* =========================
-   BOTTOM NAV — GLOBAL (MAIN APP ONLY)
+   BOTTOM NAV (ABOVE BROWSER BAR)
    ========================= */
 .bottom-nav {
-  position: fixed;           /* <- stays visible always */
-  bottom: 0;
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0px);
   left: 0;
   right: 0;
   height: 60px;
@@ -542,7 +540,8 @@ select:focus {
   justify-content: space-around;
   align-items: center;
   gap: 0.4rem;
-  z-index: 50;
+  z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .nav-item {
@@ -566,11 +565,13 @@ select:focus {
   font-size: 1.05rem;
 }
 
-/* fab */
+/* =========================
+   FAB — ABOVE NAV
+   ========================= */
 .fab {
   position: fixed;
   right: 1rem;
-  bottom: 70px;
+  bottom: calc(60px + 10px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(135deg, #3de0b5 0%, #54b2ff 100%);
   border: none;
   width: 50px;
@@ -582,17 +583,19 @@ select:focus {
   color: #020304;
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.35);
   cursor: pointer;
-  z-index: 40;
+  z-index: 210;
 }
 
-/* sheets */
+/* =========================
+   SHEETS — ABOVE NAV
+   ========================= */
 .sheet {
   position: fixed;
   inset: 0;
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  z-index: 100;
+  z-index: 300; /* above nav + fab */
 }
 .sheet-overlay {
   position: absolute;
@@ -606,11 +609,11 @@ select:focus {
   border-top-right-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.015);
   width: 100%;
-  padding: 0.5rem 0.8rem 1rem;
+  padding: 0.5rem 0.8rem calc(1rem + 60px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -20px 30px rgba(0, 0, 0, 0.35);
 }
 .sheet-body.small {
-  padding-bottom: 1.1rem;
+  padding-bottom: calc(1rem + 60px + env(safe-area-inset-bottom, 0px));
 }
 .sheet-handle {
   width: 48px;
@@ -631,7 +634,9 @@ select:focus {
   gap: 0.6rem;
 }
 
-/* scrollbar for main list */
+/* =========================
+   SCROLLBARS
+   ========================= */
 .main-scroll::-webkit-scrollbar {
   width: 4px;
 }
