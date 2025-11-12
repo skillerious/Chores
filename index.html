@@ -231,7 +231,7 @@
 
                 <!-- Quick actions -->
                 <div class="quick-actions">
-                  <button class="quick-btn" @click="openChoreSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"></use></svg><span>Add chore</span></button>
+                  <button class="quick-btn primary" @click="openChoreSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"></use></svg><span>Add chore</span></button>
                   <button class="quick-btn" @click="scrollToActivity()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-activity"></use></svg><span>Activity</span></button>
                   <button class="quick-btn" @click="openSettingsSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-sliders"></use></svg><span>Device</span></button>
                 </div>
@@ -323,7 +323,9 @@
           </main>
 
           <!-- FAB -->
-          <button id="fab-add" class="fab" @click="openChoreSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"></use></svg></button>
+          <button id="fab-add" class="fab" aria-label="Add chore" @click="openChoreSheet()">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"></use></svg>
+          </button>
 
           <!-- Bottom Nav (banking-style) -->
           <nav
