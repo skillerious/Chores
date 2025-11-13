@@ -329,7 +329,7 @@ select::-ms-expand{display:none}
   scroll-snap-type:x mandatory;
   scroll-padding:calc(var(--page-pad) + 14px);
   mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.92) 6%,rgba(0,0,0,.92) 94%,transparent 100%);
-  touch-action:pan-y;
+  touch-action:pan-x;
 }
 .child-carousel::-webkit-scrollbar{display:none}
 
