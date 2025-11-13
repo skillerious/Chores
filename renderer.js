@@ -4,6 +4,7 @@ const LS_SALT = "chores.salt";
 const LS_DATA = "chores.data";
 const LS_REMEMBER = "chores.remember";
 const LS_TOKEN = "chores.github.token";
+const LS_PASS_CACHE = "chores.pass.cache";
 
 const defaultData = {
   version: 1,
@@ -52,6 +53,9 @@ window.choresApp = function choresApp() {
     remoteLedgerSha: null,
     pendingSyncHandle: null,
     syncReason: "",
+    isManualSaving: false,
+    saveFeedback: { visible: false, text: "", tone: "success" },
+    saveFeedbackTimer: null,
     repoConfig: Object.freeze({
       owner: (window.choreDataConfig && window.choreDataConfig.owner) || "skillerious",
       repo: (window.choreDataConfig && window.choreDataConfig.repo) || "Chores",
@@ -66,16 +70,21 @@ window.choresApp = function choresApp() {
       if (raw) {
         try { this.data = JSON.parse(raw); } catch { this.data = structuredClone(defaultData); }
       }
+      const cachedPass = localStorage.getItem(LS_PASS_CACHE);
       const storedToken = localStorage.getItem(LS_TOKEN);
       if (storedToken) {
         this.githubToken = storedToken;
         this.hasStoredToken = true;
+        this.lockGithubToken = storedToken;
       }
+      const rememberFlag = localStorage.getItem(LS_REMEMBER);
+      const remembered = rememberFlag === "1";
+      this.rememberDevice = rememberFlag === null ? this.rememberDevice : remembered;
+      if (remembered && cachedPass) this.lockPassword = cachedPass;
+      else if (!remembered) this.lockPassword = "";
 
       // auth gate
       const hasPass = !!localStorage.getItem(LS_PASS);
-      const remembered = localStorage.getItem(LS_REMEMBER) === "1";
-
       if (!hasPass) {
         this.activeView = "setup";
         if (!storedToken) this.requestLockToken = true;
@@ -147,10 +156,13 @@ window.choresApp = function choresApp() {
       const derived = await this.derivePassword(this.setupPassword, salt);
       localStorage.setItem(LS_PASS, derived);
       localStorage.setItem(LS_SALT, this.arrayBufferToBase64(salt));
+      localStorage.setItem(LS_PASS_CACHE, this.setupPassword);
+      this.lockPassword = this.setupPassword;
 
       if (!localStorage.getItem(LS_DATA)) localStorage.setItem(LS_DATA, JSON.stringify(this.data));
 
       localStorage.setItem(LS_REMEMBER, "1");
+      this.rememberDevice = true;
       this.activateMain("first-run");
     },
 
@@ -183,11 +195,17 @@ window.choresApp = function choresApp() {
           this.githubToken = storedToken;
           this.hasStoredToken = true;
           this.lockTokenError = "";
+          this.lockGithubToken = storedToken;
         }
         this.requestLockToken = false;
 
-        if (this.rememberDevice) localStorage.setItem(LS_REMEMBER, "1");
-        else localStorage.removeItem(LS_REMEMBER);
+        if (this.rememberDevice) {
+          localStorage.setItem(LS_REMEMBER, "1");
+          localStorage.setItem(LS_PASS_CACHE, this.lockPassword);
+        } else {
+          localStorage.removeItem(LS_REMEMBER);
+          localStorage.removeItem(LS_PASS_CACHE);
+        }
 
         const raw = localStorage.getItem(LS_DATA);
         if (raw) { try { this.data = JSON.parse(raw); } catch { this.data = structuredClone(defaultData); } }
@@ -198,10 +216,21 @@ window.choresApp = function choresApp() {
       }
     },
 
-    lockOut() {
-      localStorage.removeItem(LS_REMEMBER);
-      this.lockPassword = "";
-      if (!localStorage.getItem(LS_TOKEN)) this.requestLockToken = true;
+    lockOut(forceForget = false) {
+      if (forceForget) {
+        localStorage.removeItem(LS_REMEMBER);
+        localStorage.removeItem(LS_PASS_CACHE);
+        this.rememberDevice = false;
+        this.lockPassword = "";
+      } else {
+        const cached = localStorage.getItem(LS_PASS_CACHE);
+        if (this.rememberDevice && cached) this.lockPassword = cached;
+        else this.lockPassword = "";
+      }
+      if (this.githubToken) this.lockGithubToken = this.githubToken;
+      this.lockError = false;
+      this.lockTokenError = "";
+      this.requestLockToken = forceForget || !localStorage.getItem(LS_TOKEN);
       this.activeView = "lock";
     },
 
@@ -211,6 +240,7 @@ window.choresApp = function choresApp() {
         localStorage.removeItem(LS_SALT);
         localStorage.removeItem(LS_DATA);
         localStorage.removeItem(LS_REMEMBER);
+        localStorage.removeItem(LS_PASS_CACHE);
         localStorage.removeItem(LS_TOKEN);
         this.data = structuredClone(defaultData);
         this.currentChildIndex = 0;
@@ -265,7 +295,7 @@ window.choresApp = function choresApp() {
       this.githubToken = trimmed;
       this.hasStoredToken = persist;
       this.requestLockToken = false;
-      this.lockGithubToken = "";
+      this.lockGithubToken = trimmed;
       this.setupGithubToken = "";
       const login = profile?.login ? `@${profile.login}` : "GitHub";
       this.setGithubStatus("ready", `Connected as ${login}`);
@@ -410,6 +440,32 @@ window.choresApp = function choresApp() {
       return this.pullLatestLedger(reason);
     },
 
+    async triggerNavSave() {
+      if (!this.githubToken || this.githubStatus.state === "syncing" || this.isManualSaving) return;
+      this.isManualSaving = true;
+      const ok = await this.syncNow("Bottom nav save");
+      if (ok) this.showSaveFeedback("Saved to GitHub", "success");
+      else this.showSaveFeedback("Save failed", "error");
+      this.isManualSaving = false;
+    },
+
+    showSaveFeedback(text, tone = "success") {
+      if (this.saveFeedbackTimer) {
+        clearTimeout(this.saveFeedbackTimer);
+        this.saveFeedbackTimer = null;
+      }
+      this.saveFeedback = { visible: true, text, tone };
+      this.saveFeedbackTimer = setTimeout(() => this.hideSaveFeedback(), 3000);
+    },
+
+    hideSaveFeedback() {
+      this.saveFeedback = { ...this.saveFeedback, visible: false };
+      if (this.saveFeedbackTimer) {
+        clearTimeout(this.saveFeedbackTimer);
+        this.saveFeedbackTimer = null;
+      }
+    },
+
     replaceGithubToken() {
       localStorage.removeItem(LS_TOKEN);
       this.githubToken = "";
@@ -423,7 +479,7 @@ window.choresApp = function choresApp() {
       this.lockGithubToken = "";
       this.lockTokenError = "";
       this.setGithubStatus("warning", "GitHub token removed. Login again to re-link.");
-      this.lockOut();
+      this.lockOut(true);
     },
 
     // ---------- CHILDREN ----------
@@ -558,8 +614,19 @@ window.choresApp = function choresApp() {
         const dist = Math.abs(centerX - cardCenter);
         if (dist < bestDist) { bestDist = dist; bestIdx = idx; }
       });
-      if (bestIdx !== this.currentChildIndex) this.setCurrentChild(bestIdx);
-      this.highlightCard(bestIdx);
+      let targetIdx = bestIdx;
+      const delta = bestIdx - this.currentChildIndex;
+      if (Math.abs(delta) > 1) {
+        const direction = Math.sign(delta);
+        const nextIdx = Math.min(
+          cards.length - 1,
+          Math.max(0, this.currentChildIndex + direction)
+        );
+        targetIdx = nextIdx;
+        this.scrollChildCardIntoView(targetIdx, cards);
+      }
+      if (targetIdx !== this.currentChildIndex) this.setCurrentChild(targetIdx);
+      this.highlightCard(targetIdx);
     },
 
     highlightCard(idx) {
@@ -568,6 +635,15 @@ window.choresApp = function choresApp() {
       carousel.querySelectorAll(".child-card-hero").forEach((el, i) => {
         if (i === idx) el.classList.add("active"); else el.classList.remove("active");
       });
+    },
+    scrollChildCardIntoView(idx, presetCards) {
+      const carousel = document.getElementById("child-carousel");
+      if (!carousel) return;
+      const cards = presetCards || [...carousel.querySelectorAll(".child-card-hero")];
+      const card = cards[idx];
+      if (card && card.scrollIntoView) {
+        card.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
     },
 
     get totalChoresCount() {

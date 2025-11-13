@@ -80,7 +80,7 @@
 
           <header class="topbar">
             <div class="topbar-left">
-              <div class="app-icon">FC</div>
+              <img src="assets/logo.png" alt="Family Chores logo" class="app-logo" />
               <div class="app-meta">
                 <span class="app-title">Family Chores</span>
                 <span class="app-sub">Secure setup</span>
@@ -141,7 +141,7 @@
 
           <header class="topbar">
             <div class="topbar-left">
-              <div class="app-icon">FC</div>
+              <img src="assets/logo.png" alt="Family Chores logo" class="app-logo" />
               <div class="app-meta">
                 <span class="app-title">Family Chores</span>
                 <span class="app-sub">Locked</span>
@@ -157,92 +157,55 @@
               </div>
               <p class="login-subtext">Securely resume your family banking board from this device.</p>
 
-              <label class="field">
-
+              <label class="field input-shell">
                 <span>Password</span>
-
-                <input
-
-                  type="password"
-
-                  x-model="lockPassword"
-
-                  @keydown.enter="doUnlock"
-
-                  autocomplete="current-password"
-
-                  placeholder="????????????????????????"
-
-                />
-
+                <div class="input-with-icon">
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-lock"></use></svg>
+                  <input
+                    type="password"
+                    x-model="lockPassword"
+                    @keydown.enter="doUnlock"
+                    autocomplete="current-password"
+                    placeholder="****************"
+                  />
+                </div>
               </label>
-
-
 
               <div class="token-block" x-cloak x-show="!hasStoredToken || requestLockToken">
-
-                <label class="field">
-
+                <label class="field input-shell">
                   <span>GitHub token</span>
-
-                  <input
-
-                    type="password"
-
-                    x-model="lockGithubToken"
-
-                    autocomplete="off"
-
-                    placeholder="ghp_xxxxxx"
-
-                  />
-
+                  <div class="input-with-icon">
+                    <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-account"></use></svg>
+                    <input
+                      type="password"
+                      x-model="lockGithubToken"
+                      autocomplete="off"
+                      placeholder="ghp_xxxxxx"
+                    />
+                  </div>
                 </label>
-
                 <p class="tiny muted">Stored securely on this browser to update <code>accounts/</code>.</p>
-
               </div>
 
-
-
-              <label class="toggle-line">
-
+              <label class="toggle-line pill-toggle">
                 <input type="checkbox" x-model="rememberDevice" />
-
                 <span>Remember this device</span>
-
               </label>
 
-
-
               <button
-
                 type="button"
-
-                class="text-btn link-btn"
-
+                class="text-btn link-btn icon-link"
                 x-cloak
-
                 x-show="hasStoredToken && !requestLockToken"
-
-                @click="requestLockToken = true; lockGithubToken=''; lockTokenError='';"
-
+                @click="requestLockToken = true; lockGithubToken = githubToken || lockGithubToken || ''; lockTokenError='';"
               >
-
                 <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-lock"></use></svg>
-
                 <span>Use a different GitHub token</span>
-
               </button>
 
-
-
-              <button class="btn-primary" @click="doUnlock">
-
+              <button class="btn-primary btn-gradient" @click="doUnlock">
                 <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-login"></use></svg>
-
                 <span>Unlock</span>
-
               </button>
 
 
@@ -480,45 +443,57 @@
             </div>
           </main>
 
-          <!-- FAB -->
-          <button id="fab-add" class="fab" aria-label="Add chore" @click="openChoreSheet()">
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"></use></svg>
-          </button>
-
           <!-- Bottom Nav (banking-style) -->
-          <nav
-            class="bottom-nav"
-            :style="{'--i': bottomNav==='home'?0:bottomNav==='activity'?1:2}"
-          >
-            <div class="nav-active" aria-hidden="true"></div>
+          <nav class="bottom-nav">
+            <div
+              class="nav-links"
+              :style="{'--i': bottomNav==='home'?0:bottomNav==='activity'?1:2}"
+            >
+              <div class="nav-active" aria-hidden="true"></div>
 
-            <button class="nav-item" :class="{'active': bottomNav==='home'}" @click="goHome()">
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-home"></use></svg>
-              <span class="nav-text">Home</span>
-            </button>
+              <button class="nav-item" :class="{'active': bottomNav==='home'}" @click="goHome()">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-home"></use></svg>
+                <span class="nav-text">Home</span>
+              </button>
 
-            <button class="nav-item" :class="{'active': bottomNav==='activity'}" @click="scrollToActivity()">
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-activity"></use></svg>
-              <span class="nav-text">Activity</span>
-            </button>
+              <button class="nav-item" :class="{'active': bottomNav==='activity'}" @click="scrollToActivity()">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-activity"></use></svg>
+                <span class="nav-text">Activity</span>
+              </button>
 
-            <button class="nav-item" :class="{'active': bottomNav==='device'}" @click="openSettingsSheet()">
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-sliders"></use></svg>
-              <span class="nav-text">Device</span>
-            </button>
+              <button class="nav-item" :class="{'active': bottomNav==='device'}" @click="openSettingsSheet()">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-sliders"></use></svg>
+                <span class="nav-text">Device</span>
+              </button>
+            </div>
 
             <button
               class="nav-item nav-save"
               type="button"
-              @click="syncNow('Bottom nav save')"
-              :disabled="!githubToken || githubStatus.state === 'syncing'"
+              @click="triggerNavSave()"
+              :disabled="!githubToken || githubStatus.state === 'syncing' || isManualSaving"
             >
               <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-save"></use></svg>
-              <span class="nav-text" x-text="githubStatus.state === 'syncing' ? 'Saving…' : 'Save'"></span>
+              <span
+                class="nav-text"
+                x-text="githubStatus.state === 'syncing' || isManualSaving ? 'Saving…' : 'Save'"
+              ></span>
             </button>
 
             <div class="home-indicator" aria-hidden="true"></div>
           </nav>
+          <div
+            class="save-toast"
+            x-cloak
+            x-show="saveFeedback.visible"
+            x-transition.origin.bottom
+            :class="saveFeedback.tone"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false">
+              <use :href="saveFeedback.tone === 'error' ? '#icon-restart' : '#icon-save'"></use>
+            </svg>
+            <span x-text="saveFeedback.text"></span>
+          </div>
 
           <!-- Add Chore Sheet -->
           <div id="chore-sheet" class="sheet" x-show="showChoreSheet" x-transition.opacity>
