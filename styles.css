@@ -798,7 +798,9 @@ select::-ms-expand{display:none}
 }
 
 @media (max-width:420px){
-  .topbar,.app-topbar{margin:0 var(--page-pad) .4rem;padding:.85rem var(--page-pad)}
+  .topbar,.app-topbar{padding:.85rem var(--page-pad)}
+  .topbar{margin:0 var(--page-pad) .4rem}
+  .app-topbar{margin:0 var(--page-pad) 1rem}
   .child-card-hero{
     flex:0 0 86vw;
     min-width:86vw;
