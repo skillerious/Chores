@@ -37,7 +37,14 @@
     {
       "id": "sophie",
       "name": "Sophie",
-      "chores": []
+      "chores": [
+        {
+          "id": "ch_eba325e7-0e0e-42d4-9ff7-cee6e21505b7",
+          "title": "Bedroom Cleaned",
+          "amount": 10,
+          "date": "2025-11-13T23:01:51.074Z"
+        }
+      ]
     }
   ]
 }
