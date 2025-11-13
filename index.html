@@ -252,22 +252,40 @@
           <div class="mobile-statusbar"></div>
 
           <header class="app-topbar">
-            <div class="topbar-left">
-              <div class="app-titleblock">
-                <h1>Family Chores</h1>
-                <p class="sub" x-text="payoutText"></p>
+            <div class="app-topbar-head">
+              <div class="app-title-stack">
+                <span class="eyebrow">Household board</span>
+                <h1>
+                  <span>Family</span>
+                  <span>Chores</span>
+                </h1>
+                <p class="header-range" x-text="payoutText"></p>
+              </div>
+              <div class="app-topbar-actions">
+                <div class="period-pill">
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-calendar"></use></svg>
+                  <select id="period-select" class="chip-select" x-model="period" @change="renderPeriod()">
+                    <option value="current">Current</option>
+                    <option value="month">This month</option>
+                    <option value="all">All time</option>
+                  </select>
+                </div>
+                <button class="icon-btn ghost" title="Lock" @click="lockOut">
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-logout"></use></svg>
+                </button>
               </div>
             </div>
-            <div class="topbar-actions">
-              <div class="chip">
-                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-calendar"></use></svg>
-                <select id="period-select" class="chip-select" x-model="period" @change="renderPeriod()">
-                  <option value="current">Current</option>
-                  <option value="month">This month</option>
-                  <option value="all">All time</option>
-                </select>
+            <div class="app-topbar-stats">
+              <div class="topbar-stat">
+                <span class="label">Chores logged</span>
+                <strong x-text="totalChoresCount"></strong>
+                <small>This period</small>
               </div>
-              <button class="icon-btn" title="Lock" @click="lockOut"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-logout"></use></svg></button>
+              <div class="topbar-stat">
+                <span class="label">Total rewards</span>
+                <strong x-text="formatMoney(totalChoresValue)"></strong>
+                <small>Across kids</small>
+              </div>
             </div>
           </header>
 
