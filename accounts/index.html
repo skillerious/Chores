@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Family Chores — Banking Style</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- Font: Inter for crisp UI text -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <svg aria-hidden="true" class="icon-sprite">
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="icon-activity" viewBox="0 0 24 24">
+        <path d="M4 16l4-6 4 5 4-8 4 6" />
+      </symbol>
+      <symbol id="icon-sliders" viewBox="0 0 24 24">
+        <path d="M5 7h14M5 12h14M5 17h14" />
+        <circle cx="9" cy="7" r="1.7" />
+        <circle cx="15" cy="12" r="1.7" />
+        <circle cx="9" cy="17" r="1.7" />
+      </symbol>
+      <symbol id="icon-home" viewBox="0 0 24 24">
+        <path d="M4 11l8-7 8 7v9a2 2 0 0 1-2 2h-4.5v-5.5h-3V22H6a2 2 0 0 1-2-2z" />
+      </symbol>
+      <symbol id="icon-calendar" viewBox="0 0 24 24">
+        <rect x="4" y="5" width="16" height="15" rx="2" />
+        <path d="M8 3v4M16 3v4M4 11h16" />
+      </symbol>
+      <symbol id="icon-login" viewBox="0 0 24 24">
+        <path d="M15 6h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3" />
+        <path d="M10 8l-4 4 4 4" />
+        <path d="M6 12h11" />
+      </symbol>
+      <symbol id="icon-logout" viewBox="0 0 24 24">
+        <path d="M9 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" />
+        <path d="M14 8l4 4-4 4" />
+        <path d="M18 12H9" />
+      </symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M9 11V8a3 3 0 0 1 6 0v3" />
+      </symbol>
+      <symbol id="icon-restart" viewBox="0 0 24 24">
+        <path d="M4 12a8 8 0 0 1 13.3-5.7L20 9" />
+        <path d="M20 5v4h-4" />
+        <path d="M20 12a8 8 0 0 1-13.3 5.7L4 15" />
+        <path d="M4 19v-4h4" />
+      </symbol>
+      <symbol id="icon-account" viewBox="0 0 24 24">
+        <circle cx="12" cy="9" r="3.2" />
+        <path d="M6 19c1.4-2.2 3.7-3.5 6-3.5s4.6 1.3 6 3.5" />
+      </symbol>
+      <symbol id="icon-task" viewBox="0 0 24 24">
+        <rect x="3.5" y="5" width="17" height="14" rx="3" />
+        <path d="M8.5 12.5 11 15l5-6" />
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="M6 6l12 12M18 6 6 18" />
+      </symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24">
+        <path d="M12 5v9" />
+        <path d="M8.5 10.5 12 14l3.5-3.5" />
+        <path d="M5 19h14" />
+      </symbol>
+    </svg>
+    <div class="app-shell" x-data="choresApp()" x-init="init()" x-cloak>
+      <div class="device">
+
+        <!-- ============ SETUP ============ -->
+        <section id="setup-screen" class="view screen-auth" x-show="activeView === 'setup'">
+          <div class="mobile-statusbar"></div>
+
+          <header class="topbar">
+            <div class="topbar-left">
+              <div class="app-icon">FC</div>
+              <div class="app-meta">
+                <span class="app-title">Family Chores</span>
+                <span class="app-sub">Secure setup</span>
+              </div>
+            </div>
+          </header>
+
+          <div class="auth-body">
+            <div class="auth-header">
+              <h1>Set up your board</h1>
+              <p>Create a password to lock this device.</p>
+            </div>
+
+            <div class="auth-card">
+              <label class="field">
+                <span>New password</span>
+                <input type="password" x-model="setupPassword" autocomplete="new-password" />
+              </label>
+
+              <label class="field">
+                <span>Confirm password</span>
+                <input type="password" x-model="setupPassword2" autocomplete="new-password" />
+              </label>
+
+              <label class="field">
+                <span>GitHub personal access token</span>
+                <input
+                  type="password"
+                  x-model="setupGithubToken"
+                  autocomplete="off"
+                  placeholder="ghp_xxxxxx"
+                />
+              </label>
+
+              <p class="tiny muted">
+                Requires repo contents:read/write for <code>accounts/ledger.json</code>. Stored only on this device.
+              </p>
+
+              <button class="btn-primary" @click="doSetup">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-login"></use></svg>
+                <span>Save & continue</span>
+              </button>
+
+              <p class="error-text" x-show="setupError">Passwords don’t match.</p>
+              <p class="error-text" x-show="setupTokenError" x-text="setupTokenError"></p>
+              <p class="tiny muted">Stored locally — never sent.</p>
+            </div>
+
+            <footer class="screen-footer">
+              <span class="muted tiny">Designed for mobile • Local-first</span>
+            </footer>
+          </div>
+        </section>
+
+        <!-- ============ LOCK / LOGIN ============ -->
+        <section id="lock-screen" class="view screen-login" x-show="activeView === 'lock'">
+          <div class="mobile-statusbar"></div>
+
+          <header class="topbar">
+            <div class="topbar-left">
+              <div class="app-icon">FC</div>
+              <div class="app-meta">
+                <span class="app-title">Family Chores</span>
+                <span class="app-sub">Locked</span>
+              </div>
+            </div>
+          </header>
+
+          <div class="login-body">
+            <div class="login-card">
+              <div class="card-headline">
+                <svg class="icon icon-lg icon-accent" aria-hidden="true" focusable="false"><use href="#icon-lock"></use></svg>
+                <h1>Unlock</h1>
+              </div>
+              <p class="login-subtext">Securely resume your family banking board from this device.</p>
+
+              <label class="field">
+
+                <span>Password</span>
+
+                <input
+
+                  type="password"
+
+                  x-model="lockPassword"
+
+                  @keydown.enter="doUnlock"
+
+                  autocomplete="current-password"
+
+                  placeholder="????????????????????????"
+
+                />
+
+              </label>
+
+
+
+              <div class="token-block" x-cloak x-show="!hasStoredToken || requestLockToken">
+
+                <label class="field">
+
+                  <span>GitHub token</span>
+
+                  <input
+
+                    type="password"
+
+                    x-model="lockGithubToken"
+
+                    autocomplete="off"
+
+                    placeholder="ghp_xxxxxx"
+
+                  />
+
+                </label>
+
+                <p class="tiny muted">Stored securely on this browser to update <code>accounts/</code>.</p>
+
+              </div>
+
+
+
+              <label class="toggle-line">
+
+                <input type="checkbox" x-model="rememberDevice" />
+
+                <span>Remember this device</span>
+
+              </label>
+
+
+
+              <button
+
+                type="button"
+
+                class="text-btn link-btn"
+
+                x-cloak
+
+                x-show="hasStoredToken && !requestLockToken"
+
+                @click="requestLockToken = true; lockGithubToken=''; lockTokenError='';"
+
+              >
+
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-lock"></use></svg>
+
+                <span>Use a different GitHub token</span>
+
+              </button>
+
+
+
+              <button class="btn-primary" @click="doUnlock">
+
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-login"></use></svg>
+
+                <span>Unlock</span>
+
+              </button>
+
+
+
+              <div class="inline-actions">
+
+                <button type="button" class="text-btn" @click="resetDevice">
+
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-restart"></use></svg>
+
+                  <span>Reset this device</span>
+
+                </button>
+
+              </div>
+
+
+
+              <p class="error-text" x-show="lockError">Incorrect password.</p>
+
+              <p class="error-text" x-show="lockTokenError" x-text="lockTokenError"></p>
+
+
+
+            <div class="auth-benefits">
+              <div class="benefit-card">
+                <span class="tag soft">Private</span>
+                <p>Everything stays local to this browser.</p>
+              </div>
+              <div class="benefit-card">
+                <span class="tag soft">Always on</span>
+                <p>Unlock to add chores or review payouts anytime.</p>
+              </div>
+            </div>
+
+            <footer class="screen-footer">
+              <span class="muted tiny">Clears password & chores on this browser only.</span>
+            </footer>
+          </div>
+        </section>
+
+        <!-- ============ MAIN APP ============ -->
+        <section id="main-screen" class="view screen-main" x-show="activeView === 'main'">
+          <div class="mobile-statusbar"></div>
+
+          <header class="app-topbar">
+            <div class="topbar-left">
+              <div class="app-titleblock">
+                <h1>Family Chores</h1>
+                <p class="sub" x-text="payoutText"></p>
+              </div>
+            </div>
+            <div class="topbar-actions">
+              <div class="chip">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-calendar"></use></svg>
+                <select id="period-select" class="chip-select" x-model="period" @change="renderPeriod()">
+                  <option value="current">Current</option>
+                  <option value="month">This month</option>
+                  <option value="all">All time</option>
+                </select>
+              </div>
+              <button class="icon-btn" title="Lock" @click="lockOut"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-logout"></use></svg></button>
+            </div>
+          </header>
+
+          <main id="main-scroll" class="content-scroll">
+            <div class="home-view" x-show="bottomNav === 'home'" x-transition.opacity>
+            <!-- HERO -->
+            <section id="hero" class="hero-section">
+              <div class="hero-gradient"></div>
+              <div class="hero-content">
+
+                <!-- Swipeable child cards -->
+                <div id="child-carousel" class="child-carousel">
+                  <template x-for="(child, idx) in data.children" :key="child.id">
+                    <div class="child-card-hero" :class="idx === currentChildIndex ? 'active' : ''" @click="setCurrentChild(idx)">
+                      <div class="child-card-top">
+                        <div class="child-name-block">
+                          <span>Child account</span>
+                          <strong x-text="child.name"></strong>
+                        </div>
+                        <div class="child-avatar"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-account"></use></svg></div>
+                      </div>
+                      <div class="child-balance">
+                        <span class="child-balance-label">This period</span>
+                        <div class="child-balance-amount" x-text="formatMoney(totalForChildInPeriod(child))"></div>
+                        <div class="child-balance-period" x-text="rangeText"></div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Quick actions -->
+                <div class="quick-actions">
+                  <button class="quick-btn primary" @click="openChoreSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"></use></svg><span>Add chore</span></button>
+                  <button class="quick-btn" @click="scrollToActivity()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-activity"></use></svg><span>Activity</span></button>
+                  <button class="quick-btn" @click="openSettingsSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-sliders"></use></svg><span>Device</span></button>
+                </div>
+
+                <div class="hero-stats">
+                  <div class="stat-card">
+                    <span class="stat-label">Chores done</span>
+                    <strong x-text="currentChildChores.length"></strong>
+                    <small>This period</small>
+                  </div>
+                  <div class="stat-card">
+                    <span class="stat-label">Avg reward</span>
+                    <strong
+                      x-text="formatMoney(currentChildChores.length ? currentChildChores.reduce((sum, chore) => sum + Number(chore.amount || 0), 0) / currentChildChores.length : 0)"
+                    ></strong>
+                    <small>Per chore</small>
+                  </div>
+                  <div class="stat-card stat-card-wide">
+                    <span class="stat-label">Window</span>
+                    <strong x-text="rangeText"></strong>
+                    <small x-text="payoutText"></small>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Current child chores -->
+            <section class="panel" id="child-chores-panel">
+              <header class="panel-head">
+                <div>
+                  <h2 x-text="'Chores — ' + currentChildName"></h2>
+                  <p class="muted tiny">For current child / period</p>
+                </div>
+                <button id="panel-add-chore" class="panel-btn" @click="openChoreSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"></use></svg></button>
+              </header>
+
+              <div id="children-chore-list" class="chore-list">
+                <template x-if="currentChildChores.length === 0">
+                  <p class="tiny muted">No chores logged in this period.</p>
+                </template>
+
+                <template x-for="chore in currentChildChores" :key="chore.id">
+                  <div class="chore-item">
+                    <div class="chore-left">
+                      <div class="chore-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-task"></use></svg></div>
+                      <div class="chore-meta">
+                        <div class="title" x-text="chore.title"></div>
+                        <div class="date" x-text="formatDateTime(chore.date)"></div>
+                      </div>
+                    </div>
+                    <div class="chore-right">
+                      <div class="chore-amount" x-text="formatMoney(chore.amount)"></div>
+                      <button class="chore-remove" @click="removeChore(data.children[currentChildIndex].id, chore.id)">
+                        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"></use></svg>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+              <div class="scroll-bottom-space"></div>
+            </div>
+
+            <div class="activity-view" x-show="bottomNav === 'activity'" x-transition.opacity>
+              <section class="activity-hero">
+                <div class="activity-hero-head">
+                  <span class="tag soft">Insights</span>
+                  <h2>Activity dashboard</h2>
+                  <p x-text="payoutText"></p>
+                </div>
+                <div class="activity-metrics">
+                  <div class="metric-card">
+                    <span class="metric-label">Chores logged</span>
+                    <strong x-text="totalChoresCount"></strong>
+                    <small>This period</small>
+                  </div>
+                  <div class="metric-card">
+                    <span class="metric-label">Total rewards</span>
+                    <strong x-text="formatMoney(totalChoresValue)"></strong>
+                    <small>Across all kids</small>
+                  </div>
+                  <div class="metric-card accent">
+                    <span class="metric-label">Latest entry</span>
+                    <strong x-text="recentActivity[0] ? formatMoney(recentActivity[0].amount) : formatMoney(0)"></strong>
+                    <small x-text="recentActivity[0] ? formatDateTime(recentActivity[0].date) : 'Waiting for next chore'"></small>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel activity-feed">
+                <header class="panel-head">
+                  <div>
+                    <h2>Timeline</h2>
+                    <p class="muted tiny">Latest 10 events</p>
+                  </div>
+                </header>
+                <div class="timeline">
+                  <template x-if="recentActivity.length === 0">
+                    <p class="tiny muted">No chores logged yet.</p>
+                  </template>
+                  <template x-for="item in recentActivity" :key="item.id">
+                    <div class="timeline-row">
+                      <div class="timeline-dot"></div>
+                      <div class="timeline-meta">
+                        <div class="timeline-title">
+                          <strong x-text="item.title"></strong>
+                          <span x-text="item.child"></span>
+                        </div>
+                        <small x-text="formatDateTime(item.date)"></small>
+                      </div>
+                      <div class="timeline-amount" x-text="formatMoney(item.amount)"></div>
+                    </div>
+                  </template>
+                </div>
+              </section>
+
+              <section class="panel activity-breakdown">
+                <header class="panel-head">
+                  <div>
+                    <h2>Child breakdown</h2>
+                    <p class="muted tiny">Performance this period</p>
+                  </div>
+                </header>
+                <div class="child-break-grid">
+                  <template x-for="child in childBreakdown" :key="child.id">
+                    <div class="child-break-card">
+                      <div class="child-break-meta">
+                        <span class="tag" x-text="child.count + (child.count === 1 ? ' chore' : ' chores')"></span>
+                        <strong x-text="child.name"></strong>
+                        <small x-text="child.last ? formatDateTime(child.last.date) : 'No entries yet'"></small>
+                      </div>
+                      <div class="child-break-amt" x-text="formatMoney(child.total)"></div>
+                    </div>
+                  </template>
+                </div>
+              </section>
+
+              <div class="scroll-bottom-space"></div>
+            </div>
+          </main>
+
+          <!-- FAB -->
+          <button id="fab-add" class="fab" aria-label="Add chore" @click="openChoreSheet()">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"></use></svg>
+          </button>
+
+          <!-- Bottom Nav (banking-style) -->
+          <nav class="bottom-nav">
+            <div
+              class="nav-links"
+              :style="{'--i': bottomNav==='home'?0:bottomNav==='activity'?1:2}"
+            >
+              <div class="nav-active" aria-hidden="true"></div>
+
+              <button class="nav-item" :class="{'active': bottomNav==='home'}" @click="goHome()">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-home"></use></svg>
+                <span class="nav-text">Home</span>
+              </button>
+
+              <button class="nav-item" :class="{'active': bottomNav==='activity'}" @click="scrollToActivity()">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-activity"></use></svg>
+                <span class="nav-text">Activity</span>
+              </button>
+
+              <button class="nav-item" :class="{'active': bottomNav==='device'}" @click="openSettingsSheet()">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-sliders"></use></svg>
+                <span class="nav-text">Device</span>
+              </button>
+            </div>
+
+            <button
+              class="nav-item nav-save"
+              type="button"
+              @click="triggerNavSave()"
+              :disabled="!githubToken || githubStatus.state === 'syncing' || isManualSaving"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-save"></use></svg>
+              <span
+                class="nav-text"
+                x-text="githubStatus.state === 'syncing' || isManualSaving ? 'Saving…' : 'Save'"
+              ></span>
+            </button>
+
+            <div class="home-indicator" aria-hidden="true"></div>
+          </nav>
+          <div
+            class="save-toast"
+            x-cloak
+            x-show="saveFeedback.visible"
+            x-transition.origin.bottom
+            :class="saveFeedback.tone"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false">
+              <use :href="saveFeedback.tone === 'error' ? '#icon-restart' : '#icon-save'"></use>
+            </svg>
+            <span x-text="saveFeedback.text"></span>
+          </div>
+
+          <!-- Add Chore Sheet -->
+          <div id="chore-sheet" class="sheet" x-show="showChoreSheet" x-transition.opacity>
+            <div class="sheet-overlay" @click="closeChoreSheet()"></div>
+            <div class="sheet-body" x-transition.origin.bottom>
+              <div class="sheet-handle"></div>
+              <div class="sheet-header">
+                <h2>Add chore</h2>
+                <button class="icon-btn small" @click="closeChoreSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"></use></svg></button>
+              </div>
+
+              <form class="sheet-form" @submit.prevent="addChore">
+                <label class="field">
+                  <span>Child</span>
+                  <select x-model="choreForm.childId">
+                    <template x-for="child in data.children" :key="child.id">
+                      <option :value="child.id" x-text="child.name"></option>
+                    </template>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Chore title</span>
+                  <input type="text" x-model="choreForm.title" placeholder="Clean bedroom" required />
+                </label>
+
+                <label class="field">
+                  <span>Amount (£)</span>
+                  <input type="number" step="0.01" min="0" x-model="choreForm.amount" placeholder="5" required />
+                </label>
+
+                <button type="submit" class="btn-primary">
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-save"></use></svg>
+                  <span>Save chore</span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Settings Sheet -->
+          <div id="settings-sheet" class="sheet" x-show="showSettingsSheet" x-transition.opacity>
+            <div class="sheet-overlay" @click="closeSettingsSheet()"></div>
+            <div class="sheet-body small" x-transition.origin.bottom>
+              <div class="sheet-handle"></div>
+              <div class="sheet-header">
+                <h2>Device</h2>
+                <button class="icon-btn small" @click="closeSettingsSheet()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"></use></svg></button>
+              </div>
+
+              <div class="settings-content">
+                <p class="muted tiny">
+                  Household balances sync to <code>accounts/ledger.json</code> in your GitHub repo using the token saved on this device.
+                </p>
+
+                <div class="status-card">
+                  <div class="status-line">
+                    <span>GitHub link</span>
+                    <span class="status-value" x-text="githubStatus.message"></span>
+                  </div>
+                  <div class="status-line">
+                    <span>Last sync</span>
+                    <span class="status-value" x-text="githubStatus.lastSync ? formatDateTime(githubStatus.lastSync) : '—'"></span>
+                  </div>
+                  <div class="status-actions">
+                    <button type="button" class="btn-outline" @click="syncNow('Manual sync')">
+                      <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-save"></use></svg>
+                      <span>Push to GitHub</span>
+                    </button>
+                    <button type="button" class="btn-outline" @click="refreshFromRemote('Manual refresh')">
+                      <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-restart"></use></svg>
+                      <span>Pull latest</span>
+                    </button>
+                  </div>
+                </div>
+
+                <button class="btn-outline danger" @click="replaceGithubToken">
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-lock"></use></svg>
+                  <span>Replace GitHub token</span>
+                </button>
+
+                <button class="btn-outline danger" @click="resetDevice">
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-restart"></use></svg>
+                  <span>Reset this device</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- App logic -->
+    <script src="renderer.js"></script>
+  </body>
+</html>
