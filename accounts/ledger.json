@@ -1,0 +1,43 @@
+{
+  "children": [
+    {
+      "id": "arthur",
+      "name": "Arthur",
+      "chores": [
+        {
+          "id": "ch_3ffbbd9c-b0da-4c89-ab6f-20904b08f2ed",
+          "title": "Bed",
+          "amount": 2,
+          "date": "2025-11-12T23:20:08.072Z"
+        },
+        {
+          "id": "ch_93319fc9-d577-407d-8224-41d36d477eba",
+          "title": "Teeth",
+          "amount": 1,
+          "date": "2025-11-12T23:20:23.564Z"
+        },
+        {
+          "id": "ch_0e9c94cb-c657-4529-a7f2-b88adfc556ed",
+          "title": "Test",
+          "amount": 4,
+          "date": "2025-11-13T18:47:57.033Z"
+        }
+      ]
+    },
+    {
+      "id": "alfie",
+      "name": "Alfie",
+      "chores": []
+    },
+    {
+      "id": "jack",
+      "name": "Jack",
+      "chores": []
+    },
+    {
+      "id": "sophie",
+      "name": "Sophie",
+      "chores": []
+    }
+  ]
+}
