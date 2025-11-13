@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "generated": "2025-11-13T00:00:00.000Z",
+  "children": [
+    {"id": "arthur", "name": "Arthur", "balance": 0, "chores": []},
+    {"id": "alfie", "name": "Alfie", "balance": 0, "chores": []},
+    {"id": "jack", "name": "Jack", "balance": 0, "chores": []},
+    {"id": "sophie", "name": "Sophie", "balance": 0, "chores": []}
+  ]
+}
+
