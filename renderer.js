@@ -3,13 +3,15 @@ const LS_PASS = "chores.pass";
 const LS_SALT = "chores.salt";
 const LS_DATA = "chores.data";
 const LS_REMEMBER = "chores.remember";
+const LS_TOKEN = "chores.github.token";
 
 const defaultData = {
+  version: 1,
   children: [
-    { id: "arthur", name: "Arthur", chores: [] },
-    { id: "alfie",  name: "Alfie",  chores: [] },
-    { id: "jack",   name: "Jack",   chores: [] },
-    { id: "sophie", name: "Sophie", chores: [] },
+    { id: "arthur", name: "Arthur", balance: 0, chores: [] },
+    { id: "alfie",  name: "Alfie",  balance: 0, chores: [] },
+    { id: "jack",   name: "Jack",   balance: 0, chores: [] },
+    { id: "sophie", name: "Sophie", balance: 0, chores: [] },
   ],
 };
 
@@ -24,10 +26,16 @@ window.choresApp = function choresApp() {
     setupPassword: "",
     setupPassword2: "",
     setupError: false,
+    setupGithubToken: "",
+    setupTokenError: "",
 
     lockPassword: "",
     lockError: false,
+    lockGithubToken: "",
+    lockTokenError: "",
     rememberDevice: true,
+    hasStoredToken: false,
+    requestLockToken: false,
 
     showChoreSheet: false,
     showSettingsSheet: false,
@@ -39,12 +47,29 @@ window.choresApp = function choresApp() {
     bottomNav: "home",
     navBeforeSheet: "home",
 
+    githubToken: "",
+    githubStatus: { state: "idle", message: "Not connected", lastSync: null },
+    remoteLedgerSha: null,
+    pendingSyncHandle: null,
+    syncReason: "",
+    repoConfig: Object.freeze({
+      owner: (window.choreDataConfig && window.choreDataConfig.owner) || "skillerious",
+      repo: (window.choreDataConfig && window.choreDataConfig.repo) || "Chores",
+      branch: (window.choreDataConfig && window.choreDataConfig.branch) || "main",
+      ledgerFile: (window.choreDataConfig && window.choreDataConfig.ledgerFile) || "accounts/ledger.json",
+    }),
+
     // ---------- INIT ----------
     async init() {
       // load data
       const raw = localStorage.getItem(LS_DATA);
       if (raw) {
         try { this.data = JSON.parse(raw); } catch { this.data = structuredClone(defaultData); }
+      }
+      const storedToken = localStorage.getItem(LS_TOKEN);
+      if (storedToken) {
+        this.githubToken = storedToken;
+        this.hasStoredToken = true;
       }
 
       // auth gate
@@ -53,16 +78,27 @@ window.choresApp = function choresApp() {
 
       if (!hasPass) {
         this.activeView = "setup";
-      } else if (remembered) {
-        this.activeView = "main";
-        this.renderPeriod();
-        this.ensureChoreFormChild();
-        (this.$nextTick ? this.$nextTick.bind(this) : (fn)=>setTimeout(fn,0))(() => {
-          this.setupObservers();
-          this.snapActiveCard();
-        });
+        if (!storedToken) this.requestLockToken = true;
+      } else if (remembered && storedToken) {
+        this.activateMain("auto-login");
       } else {
         this.activeView = "lock";
+        if (!storedToken) this.requestLockToken = true;
+      }
+    },
+
+    activateMain(reason = "login") {
+      this.activeView = "main";
+      this.renderPeriod();
+      this.ensureChoreFormChild();
+      (this.$nextTick ? this.$nextTick.bind(this) : (fn)=>setTimeout(fn,0))(() => {
+        this.setupObservers();
+        this.snapActiveCard();
+      });
+      if (this.githubToken) {
+        this.pullLatestLedger(reason);
+      } else {
+        this.setGithubStatus("warning", "Add your GitHub token to sync household data");
       }
     },
 
@@ -70,8 +106,8 @@ window.choresApp = function choresApp() {
     renderPeriod() {
       const { start, end } = this.getPeriodRange();
       const short = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-      this.rangeText = `${short(start)} → ${short(end)}`;
-      this.payoutText = `Showing ${short(start)} → ${short(end)} • Payout on 15th`;
+      this.rangeText = `${short(start)} - ${short(end)}`;
+      this.payoutText = `Showing ${short(start)} - ${short(end)} | Payout on 15th`;
     },
 
     getPeriodRange() {
@@ -94,6 +130,19 @@ window.choresApp = function choresApp() {
       }
       this.setupError = false;
 
+      const tokenCandidate = (this.setupGithubToken || "").trim();
+      if (!tokenCandidate) {
+        this.setupTokenError = "GitHub token is required to store household data.";
+        return;
+      }
+      try {
+        await this.applyGithubToken(tokenCandidate, true);
+        this.setupTokenError = "";
+      } catch (err) {
+        this.setupTokenError = err?.message || "Unable to verify GitHub token.";
+        return;
+      }
+
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const derived = await this.derivePassword(this.setupPassword, salt);
       localStorage.setItem(LS_PASS, derived);
@@ -102,13 +151,7 @@ window.choresApp = function choresApp() {
       if (!localStorage.getItem(LS_DATA)) localStorage.setItem(LS_DATA, JSON.stringify(this.data));
 
       localStorage.setItem(LS_REMEMBER, "1");
-      this.activeView = "main";
-      this.renderPeriod();
-      this.ensureChoreFormChild();
-      (this.$nextTick ? this.$nextTick.bind(this) : (fn)=>setTimeout(fn,0))(() => {
-        this.setupObservers();
-        this.snapActiveCard();
-      });
+      this.activateMain("first-run");
     },
 
     async doUnlock() {
@@ -121,19 +164,35 @@ window.choresApp = function choresApp() {
 
       if (derived === stored) {
         this.lockError = false;
+        const storedToken = localStorage.getItem(LS_TOKEN);
+        const tokenNeeded = this.requestLockToken || !storedToken;
+        if (tokenNeeded) {
+          const lockToken = (this.lockGithubToken || "").trim();
+          if (!lockToken) {
+            this.lockTokenError = "Enter your GitHub token to continue.";
+            return;
+          }
+          try {
+            await this.applyGithubToken(lockToken, true);
+            this.lockTokenError = "";
+          } catch (err) {
+            this.lockTokenError = err?.message || "Unable to verify GitHub token.";
+            return;
+          }
+        } else {
+          this.githubToken = storedToken;
+          this.hasStoredToken = true;
+          this.lockTokenError = "";
+        }
+        this.requestLockToken = false;
+
         if (this.rememberDevice) localStorage.setItem(LS_REMEMBER, "1");
         else localStorage.removeItem(LS_REMEMBER);
 
         const raw = localStorage.getItem(LS_DATA);
         if (raw) { try { this.data = JSON.parse(raw); } catch { this.data = structuredClone(defaultData); } }
 
-        this.activeView = "main";
-        this.renderPeriod();
-        this.ensureChoreFormChild();
-        (this.$nextTick ? this.$nextTick.bind(this) : (fn)=>setTimeout(fn,0))(() => {
-          this.setupObservers();
-          this.snapActiveCard();
-        });
+        this.activateMain("unlock");
       } else {
         this.lockError = true;
       }
@@ -142,6 +201,7 @@ window.choresApp = function choresApp() {
     lockOut() {
       localStorage.removeItem(LS_REMEMBER);
       this.lockPassword = "";
+      if (!localStorage.getItem(LS_TOKEN)) this.requestLockToken = true;
       this.activeView = "lock";
     },
 
@@ -151,21 +211,219 @@ window.choresApp = function choresApp() {
         localStorage.removeItem(LS_SALT);
         localStorage.removeItem(LS_DATA);
         localStorage.removeItem(LS_REMEMBER);
+        localStorage.removeItem(LS_TOKEN);
         this.data = structuredClone(defaultData);
         this.currentChildIndex = 0;
+        this.githubToken = "";
+        this.hasStoredToken = false;
+        this.remoteLedgerSha = null;
+        if (this.pendingSyncHandle) {
+          clearTimeout(this.pendingSyncHandle);
+          this.pendingSyncHandle = null;
+        }
+        this.githubStatus = { state: "idle", message: "Not connected", lastSync: null };
+        this.requestLockToken = true;
         this.activeView = "setup";
       }
     },
 
     // ---------- DATA ----------
-    saveData() {
+    saveData(reason = "Local update") {
       localStorage.setItem(LS_DATA, JSON.stringify(this.data));
       this.renderPeriod();
+      this.scheduleRemoteSync(reason);
+    },
+
+    scheduleRemoteSync(reason = "Local update") {
+      if (!this.githubToken) return;
+      if (this.pendingSyncHandle) clearTimeout(this.pendingSyncHandle);
+      this.syncReason = reason;
+      this.pendingSyncHandle = setTimeout(() => {
+        this.pendingSyncHandle = null;
+        this.pushLedger(reason);
+      }, 800);
     },
 
     ensureChoreFormChild() {
       if (this.data.children.length)
         this.choreForm.childId = this.data.children[this.currentChildIndex].id;
+    },
+
+    // ---------- REMOTE STORAGE ----------
+    async applyGithubToken(token, persist = true) {
+      const trimmed = (token || "").trim();
+      if (!trimmed) throw new Error("GitHub token is required.");
+      this.setGithubStatus("verifying", "Verifying GitHub token…");
+      let profile;
+      try {
+        profile = await this.verifyGithubToken(trimmed);
+      } catch (err) {
+        this.setGithubStatus("error", err?.message || "Unable to verify GitHub token");
+        throw err;
+      }
+      if (persist) localStorage.setItem(LS_TOKEN, trimmed);
+      this.githubToken = trimmed;
+      this.hasStoredToken = persist;
+      this.requestLockToken = false;
+      this.lockGithubToken = "";
+      this.setupGithubToken = "";
+      const login = profile?.login ? `@${profile.login}` : "GitHub";
+      this.setGithubStatus("ready", `Connected as ${login}`);
+      return profile;
+    },
+
+    buildGithubHeaders(token = this.githubToken) {
+      if (!token) throw new Error("Missing GitHub token.");
+      return {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      };
+    },
+
+    ledgerPath() {
+      return this.repoConfig.ledgerFile
+        .split("/")
+        .map(part => encodeURIComponent(part))
+        .join("/");
+    },
+
+    contentsUrl(includeRef = true) {
+      const { owner, repo, branch } = this.repoConfig;
+      const safeOwner = encodeURIComponent(owner);
+      const safeRepo = encodeURIComponent(repo);
+      const base = `https://api.github.com/repos/${safeOwner}/${safeRepo}/contents/${this.ledgerPath()}`;
+      return includeRef ? `${base}?ref=${encodeURIComponent(branch)}` : base;
+    },
+
+    setGithubStatus(state, message) {
+      const lastSync = state === "synced"
+        ? new Date().toISOString()
+        : this.githubStatus.lastSync;
+      this.githubStatus = { state, message, lastSync };
+    },
+
+    async verifyGithubToken(token) {
+      let response;
+      try {
+        response = await fetch("https://api.github.com/user", {
+          headers: this.buildGithubHeaders(token),
+        });
+      } catch (err) {
+        throw new Error("Unable to reach GitHub. Check your network connection.");
+      }
+      if (response.status === 401) throw new Error("GitHub rejected this token.");
+      if (!response.ok) throw new Error(`GitHub error (${response.status}).`);
+      return response.json();
+    },
+
+    async pullLatestLedger(reason = "pull") {
+      if (!this.githubToken) {
+        this.setGithubStatus("warning", "Add GitHub token to sync data");
+        return false;
+      }
+      this.setGithubStatus("syncing", `Pulling latest (${reason})…`);
+      try {
+        const res = await fetch(this.contentsUrl(true), {
+          headers: this.buildGithubHeaders(),
+        });
+        if (res.status === 401) {
+          throw new Error("GitHub rejected this token. Replace it via Device settings.");
+        }
+        if (res.status === 404) {
+          await this.pushLedger("Initialize ledger");
+          return true;
+        }
+        if (!res.ok) throw new Error(`Unable to read ledger (${res.status}).`);
+        const payload = await res.json();
+        const decoded = this.base64DecodeString((payload.content || "").replace(/\n/g, ""));
+        let parsed;
+        try {
+          parsed = JSON.parse(decoded);
+        } catch {
+          throw new Error("Ledger JSON is invalid.");
+        }
+        if (!parsed || !Array.isArray(parsed.children)) {
+          throw new Error("Ledger missing children array.");
+        }
+        this.remoteLedgerSha = payload.sha || null;
+        this.data = parsed;
+        localStorage.setItem(LS_DATA, JSON.stringify(parsed));
+        this.renderPeriod();
+        this.ensureChoreFormChild();
+        this.setGithubStatus("synced", "Pulled latest from GitHub");
+        return true;
+      } catch (err) {
+        this.setGithubStatus("error", err?.message || "Failed to pull GitHub data");
+        return false;
+      }
+    },
+
+    async pushLedger(reason = "local update") {
+      if (!this.githubToken) {
+        this.setGithubStatus("warning", "GitHub token required to sync");
+        return false;
+      }
+      this.setGithubStatus("syncing", `Saving to GitHub (${reason})…`);
+      try {
+        const payload = JSON.stringify(this.data, null, 2);
+        const body = {
+          message: `[KidsChores] ${reason}`,
+          content: this.base64EncodeString(payload),
+          branch: this.repoConfig.branch,
+        };
+        if (this.remoteLedgerSha) body.sha = this.remoteLedgerSha;
+        const res = await fetch(this.contentsUrl(false), {
+          method: "PUT",
+          headers: this.buildGithubHeaders(),
+          body: JSON.stringify(body),
+        });
+        if (res.status === 401) {
+          throw new Error("GitHub rejected this token. Replace it via Device settings.");
+        }
+        if (res.status === 409 || res.status === 422) {
+          this.setGithubStatus("warning", "Remote changed. Re-syncing…");
+          await this.pullLatestLedger("conflict resolution");
+          return false;
+        }
+        if (!res.ok) throw new Error(`Unable to save ledger (${res.status}).`);
+        const result = await res.json();
+        this.remoteLedgerSha = result?.content?.sha || this.remoteLedgerSha;
+        this.setGithubStatus("synced", "Synced to GitHub");
+        return true;
+      } catch (err) {
+        this.setGithubStatus("error", err?.message || "Failed to save to GitHub");
+        return false;
+      }
+    },
+
+    async syncNow(reason = "Manual sync") {
+      if (this.pendingSyncHandle) {
+        clearTimeout(this.pendingSyncHandle);
+        this.pendingSyncHandle = null;
+      }
+      return this.pushLedger(reason);
+    },
+
+    async refreshFromRemote(reason = "Manual refresh") {
+      return this.pullLatestLedger(reason);
+    },
+
+    replaceGithubToken() {
+      localStorage.removeItem(LS_TOKEN);
+      this.githubToken = "";
+      this.hasStoredToken = false;
+      this.remoteLedgerSha = null;
+      if (this.pendingSyncHandle) {
+        clearTimeout(this.pendingSyncHandle);
+        this.pendingSyncHandle = null;
+      }
+      this.requestLockToken = true;
+      this.lockGithubToken = "";
+      this.lockTokenError = "";
+      this.setGithubStatus("warning", "GitHub token removed. Login again to re-link.");
+      this.lockOut();
     },
 
     // ---------- CHILDREN ----------
@@ -199,7 +457,7 @@ window.choresApp = function choresApp() {
         date: new Date().toISOString(),
       });
 
-      this.saveData();
+      this.saveData(`Added chore for ${child.name}`);
       this.closeChoreSheet();
       this.choreForm.title = ""; this.choreForm.amount = "";
     },
@@ -208,7 +466,7 @@ window.choresApp = function choresApp() {
       const child = this.data.children.find(c => c.id === childId);
       if (!child) return;
       child.chores = child.chores.filter(c => c.id !== choreId);
-      this.saveData();
+      this.saveData(`Removed chore from ${child.name}`);
     },
 
     // ---------- DERIVED ----------
@@ -368,5 +626,7 @@ window.choresApp = function choresApp() {
     arrayBufferToBase64(buf){ const bytes=new Uint8Array(buf); let binary=""; bytes.forEach(b=>binary+=String.fromCharCode(b)); return btoa(binary); },
     base64ToArrayBuffer(b64){ const bin=atob(b64); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); return bytes.buffer; },
     bufferToHex(buffer){ const bytes=new Uint8Array(buffer); return [...bytes].map(b=>b.toString(16).padStart(2,"0")).join(""); },
+    base64EncodeString(str){ const enc=new TextEncoder(); return this.arrayBufferToBase64(enc.encode(str).buffer); },
+    base64DecodeString(b64){ const dec=new TextDecoder(); return dec.decode(this.base64ToArrayBuffer(b64)); },
   };
 };
