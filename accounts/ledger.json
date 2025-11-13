@@ -15,6 +15,12 @@
           "title": "Teeth",
           "amount": 1,
           "date": "2025-11-12T23:20:23.564Z"
+        },
+        {
+          "id": "ch_d9c7c47c-ffe5-4f2f-a24a-764c628fae81",
+          "title": "Test",
+          "amount": 3,
+          "date": "2025-11-13T18:59:51.877Z"
         }
       ]
     },
