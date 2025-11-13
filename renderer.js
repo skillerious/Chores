@@ -37,6 +37,7 @@ window.choresApp = function choresApp() {
     payoutText: "",
     rangeText: "",
     bottomNav: "home",
+    navBeforeSheet: "home",
 
     // ---------- INIT ----------
     async init() {
@@ -247,46 +248,37 @@ window.choresApp = function choresApp() {
       if (!this.showSettingsSheet) document.body.style.overflow = "";
     },
     openSettingsSheet() {
+      this.navBeforeSheet = this.bottomNav;
       this.showSettingsSheet = true;
       this.showChoreSheet = false;
       document.body.style.overflow = "hidden";
       this.bottomNav = "device";
     },
-    closeSettingsSheet() {
+    closeSettingsSheet(targetNav) {
       this.showSettingsSheet = false;
       if (!this.showChoreSheet) document.body.style.overflow = "";
-      this.bottomNav = "home";
+      if (targetNav) this.bottomNav = targetNav;
+      else if (this.bottomNav === "device") this.bottomNav = this.navBeforeSheet || "home";
     },
 
     // ---------- NAV ----------
     goHome() {
       this.bottomNav = "home";
-      const top = document.querySelector(".hero-section");
-      if (top) top.scrollIntoView({ behavior: "smooth", block: "start" });
-      this.closeSettingsSheet();
+      this.closeSettingsSheet("home");
+      this.scrollMainTop();
     },
     scrollToActivity() {
       this.bottomNav = "activity";
-      const block = document.getElementById("activity-section");
-      if (block) block.scrollIntoView({ behavior: "smooth", block: "start" });
-      this.closeSettingsSheet();
+      this.closeSettingsSheet("activity");
+      this.scrollMainTop();
+    },
+    scrollMainTop() {
+      const main = document.getElementById("main-scroll");
+      if (main) main.scrollTo({ top: 0, behavior: "smooth" });
     },
 
     // ---------- UI Polishing ----------
     setupObservers() {
-      const hero = document.getElementById("hero");
-      const activity = document.getElementById("activity-section");
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !this.showSettingsSheet) {
-            if (entry.target.id === "hero") this.bottomNav = "home";
-            else if (entry.target.id === "activity-section") this.bottomNav = "activity";
-          }
-        });
-      }, { root: document.getElementById("main-scroll"), threshold: 0.55 });
-      if (hero) io.observe(hero);
-      if (activity) io.observe(activity);
-
       const carousel = document.getElementById("child-carousel");
       if (carousel) {
         carousel.addEventListener("scroll", this.snapActiveCard.bind(this), { passive: true });
@@ -317,6 +309,48 @@ window.choresApp = function choresApp() {
       if (!carousel) return;
       carousel.querySelectorAll(".child-card-hero").forEach((el, i) => {
         if (i === idx) el.classList.add("active"); else el.classList.remove("active");
+      });
+    },
+
+    get totalChoresCount() {
+      const { start, end } = this.getPeriodRange();
+      let count = 0;
+      this.data.children.forEach(child => {
+        child.chores.forEach(c => {
+          const d = new Date(c.date);
+          if (d >= start && d < end) count += 1;
+        });
+      });
+      return count;
+    },
+    get totalChoresValue() {
+      const { start, end } = this.getPeriodRange();
+      let total = 0;
+      this.data.children.forEach(child => {
+        child.chores.forEach(c => {
+          const d = new Date(c.date);
+          if (d >= start && d < end) total += Number(c.amount || 0);
+        });
+      });
+      return total;
+    },
+    get childBreakdown() {
+      const { start, end } = this.getPeriodRange();
+      return this.data.children.map(child => {
+        let periodTotal = 0;
+        let periodCount = 0;
+        let last = null;
+        let lastDate = null;
+        child.chores.forEach(c => {
+          const val = Number(c.amount || 0);
+          const when = new Date(c.date);
+          if (!lastDate || when > lastDate) { last = c; lastDate = when; }
+          if (when >= start && when < end) {
+            periodTotal += val;
+            periodCount += 1;
+          }
+        });
+        return { id: child.id, name: child.name, total: periodTotal, count: periodCount, last };
       });
     },
 
