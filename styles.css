@@ -430,6 +430,7 @@ select::-ms-expand{display:none}
   border-radius:30px;
   padding:1.05rem 1.15rem 1.1rem;
   scroll-snap-align:center;
+  scroll-snap-stop:always;
   color:#fff;
   box-shadow:0 18px 38px rgba(3,5,12,.55);
   position:relative;
@@ -659,16 +660,18 @@ select::-ms-expand{display:none}
   background:rgba(4,6,12,.97);
   border-top:1px solid rgba(255,255,255,.08);
   box-shadow:0 -18px 30px rgba(0,0,0,.45);
-  display:flex;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
   align-items:stretch;
-  gap:.4rem;
+  gap:.35rem;
   z-index:250;
 }
 .nav-links{
   position:relative;
-  flex:1;
+  grid-column:1 / span 3;
   display:grid;
-  grid-template-columns:repeat(3,1fr);
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  min-width:0;
 }
 .bottom-nav .nav-item{
   position:relative;
@@ -678,22 +681,20 @@ select::-ms-expand{display:none}
   font-size:.65rem;
   font-weight:600;
   background:none;border:none;
+  width:100%;
+  min-width:0;
 }
 .bottom-nav .nav-item .icon{font-size:1.15rem}
 .bottom-nav .nav-item.active{color:#fff}
 .bottom-nav .nav-item[disabled]{opacity:.45;pointer-events:none}
 .nav-item.nav-save{
-  color:#fff;
-  background:rgba(255,255,255,.05);
-  border-top-left-radius:18px;
-  border-top-right-radius:18px;
-  border-bottom-left-radius:18px;
-  border-bottom-right-radius:18px;
-  padding:.65rem .9rem;
-  border:1px solid rgba(255,255,255,.2);
-  background:linear-gradient(135deg,rgba(46,202,255,.2),rgba(90,132,255,.2));
+  grid-column:4;
+  background:none;
+  border:none;
+  border-radius:0;
+  padding:.65rem .25rem 1.1rem;
+  color:rgba(241,245,255,.68);
 }
-.nav-item.nav-save .icon{font-size:1rem;display:block}
 .bottom-nav .nav-active{
   position:absolute;
   bottom:env(safe-area-inset-bottom,0px);
@@ -705,7 +706,7 @@ select::-ms-expand{display:none}
   transition:left .3s cubic-bezier(.2,.8,.2,1);
   pointer-events:none;
 }
-.home-indicator{display:none}
+.home-indicator{display:none;grid-column:1 / -1}
 
 /* Sheets */
 .sheet{position:fixed;inset:0;display:flex;justify-content:center;align-items:flex-end;z-index:400}
