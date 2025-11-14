@@ -13,7 +13,14 @@
     {
       "id": "jack",
       "name": "Jack",
-      "chores": []
+      "chores": [
+        {
+          "id": "ch_ad16de5b-5088-46a7-bc4c-b6467da376fd",
+          "title": "Brushed Teeth",
+          "amount": 1,
+          "date": "2025-11-14T16:53:13.242Z"
+        }
+      ]
     },
     {
       "id": "sophie",
