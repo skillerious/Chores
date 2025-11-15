@@ -15,7 +15,14 @@
     {
       "id": "alfie",
       "name": "Alfie",
-      "chores": []
+      "chores": [
+        {
+          "id": "ch_f800cd84-f906-4107-85bb-066fa6979aec",
+          "title": "Bedroom",
+          "amount": 2,
+          "date": "2025-11-15T15:20:40.676Z"
+        }
+      ]
     },
     {
       "id": "jack",
