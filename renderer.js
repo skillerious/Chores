@@ -48,12 +48,6 @@ window.choresApp = function choresApp() {
     rangeText: "",
     bottomNav: "home",
     navBeforeSheet: "home",
-    mainScrollEl: null,
-    heroScrollAnchor: 80,
-    forceCompactHeader: false,
-    topbarObserver: null,
-    boundResizeHandler: null,
-    topbarCompact: false,
     pendingDelete: null,
 
     githubToken: "",
@@ -111,11 +105,6 @@ window.choresApp = function choresApp() {
       (this.$nextTick ? this.$nextTick.bind(this) : (fn)=>setTimeout(fn,0))(() => {
         this.setupObservers();
         this.snapActiveCard();
-        this.mainScrollEl = document.getElementById("main-scroll");
-        this.measureHeaderAnchors();
-        this.observeTopbar();
-        this.handleViewportResize();
-        if (this.mainScrollEl) this.handleMainScroll({ target: this.mainScrollEl });
       });
       if (this.githubToken) {
         this.pullLatestLedger(reason);
@@ -123,56 +112,12 @@ window.choresApp = function choresApp() {
         this.setGithubStatus("warning", "Add your GitHub token to sync household data");
       }
     },
-
     // ---------- VIEW HELPERS ----------
     renderPeriod() {
       const { start, end } = this.getPeriodRange();
       const short = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
       this.rangeText = `${short(start)} - ${short(end)}`;
       this.payoutText = `Showing ${short(start)} - ${short(end)} | Payout on 15th`;
-    },
-
-    handleMainScroll(event) {
-      const offset = event?.target ? event.target.scrollTop || 0 : 0;
-      const shouldCompact = this.forceCompactHeader || offset > this.headerScrollThreshold();
-      if (shouldCompact !== this.topbarCompact) this.topbarCompact = shouldCompact;
-    },
-
-    headerScrollThreshold() {
-      const clamp = Math.max(60, Math.min(this.heroScrollAnchor - 20, 140));
-      return this.forceCompactHeader ? 12 : clamp;
-    },
-
-    measureHeaderAnchors() {
-      const hero = document.getElementById("hero");
-      const main = this.mainScrollEl || document.getElementById("main-scroll");
-      if (!hero || !main) return;
-      const offset = hero.offsetTop || 0;
-      if (offset) this.heroScrollAnchor = offset;
-    },
-
-    handleViewportResize() {
-      const height = window.innerHeight || document.documentElement.clientHeight || 0;
-      const width = window.innerWidth || document.documentElement.clientWidth || 0;
-      const forced = height < 640 || width < 360;
-      if (forced !== this.forceCompactHeader) this.forceCompactHeader = forced;
-      if (!this.mainScrollEl) this.mainScrollEl = document.getElementById("main-scroll");
-      this.measureHeaderAnchors();
-      this.handleMainScroll({ target: this.mainScrollEl || { scrollTop: 0 } });
-    },
-
-    observeTopbar() {
-      if (typeof ResizeObserver === "undefined") return;
-      const topbar = document.querySelector(".app-topbar");
-      if (!topbar) return;
-      if (this.topbarObserver) this.topbarObserver.disconnect();
-      this.topbarObserver = new ResizeObserver((entries) => {
-        entries.forEach((entry) => {
-          const height = entry?.contentRect?.height || topbar.offsetHeight || 0;
-          if (height) document.documentElement.style.setProperty("--app-topbar-height", `${Math.round(height)}px`);
-        });
-      });
-      this.topbarObserver.observe(topbar);
     },
 
     getPeriodRange() {
@@ -685,7 +630,6 @@ window.choresApp = function choresApp() {
     scrollMainTop() {
       const main = document.getElementById("main-scroll");
       if (main) main.scrollTo({ top: 0, behavior: "smooth" });
-      this.topbarCompact = this.forceCompactHeader;
     },
 
     // ---------- UI Polishing ----------
@@ -695,9 +639,6 @@ window.choresApp = function choresApp() {
         carousel.addEventListener("scroll", this.snapActiveCard.bind(this), { passive: true });
         window.addEventListener("resize", this.snapActiveCard.bind(this));
       }
-      if (!this.boundResizeHandler) this.boundResizeHandler = this.handleViewportResize.bind(this);
-      window.addEventListener("resize", this.boundResizeHandler);
-      this.measureHeaderAnchors();
     },
 
     snapActiveCard() {

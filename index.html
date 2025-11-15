@@ -251,27 +251,21 @@
         <section id="main-screen" class="view screen-main" x-show="activeView === 'main'">
           <div class="mobile-statusbar"></div>
 
-          <header class="app-topbar" :class="{'compact': topbarCompact}">
-            <div class="app-title-stack">
-              <span class="topbar-title">Family Chores</span>
-              <p class="header-range" x-text="payoutText"></p>
+          <header class="app-topbar">
+            <div class="period-pill full-pill">
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-calendar"></use></svg>
+              <select id="period-select" class="chip-select" x-model="period" @change="renderPeriod()">
+                <option value="current">Current</option>
+                <option value="month">This month</option>
+                <option value="all">All time</option>
+              </select>
             </div>
-            <div class="app-topbar-actions">
-              <div class="period-pill">
-                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-calendar"></use></svg>
-                <select id="period-select" class="chip-select" x-model="period" @change="renderPeriod()">
-                  <option value="current">Current</option>
-                  <option value="month">This month</option>
-                  <option value="all">All time</option>
-                </select>
-              </div>
-              <button class="icon-btn ghost logout-btn" title="Lock" @click="lockOut">
-                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-logout"></use></svg>
-              </button>
-            </div>
+            <button class="icon-btn ghost logout-btn" title="Lock" @click="lockOut">
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-logout"></use></svg>
+            </button>
           </header>
 
-          <main id="main-scroll" class="content-scroll" @scroll.passive="handleMainScroll">
+          <main id="main-scroll" class="content-scroll">
             <div class="home-view" x-show="bottomNav === 'home'" x-transition.opacity>
             <!-- HERO -->
             <section id="hero" class="hero-section">
