@@ -41,6 +41,7 @@ window.choresApp = function choresApp() {
     showChoreSheet: false,
     showSettingsSheet: false,
     showDeleteDialog: false,
+    showBreakdownDialog: false,
 
     choreForm: { childId: "", title: "", amount: "" },
 
@@ -556,6 +557,17 @@ window.choresApp = function choresApp() {
       this.showDeleteDialog = false;
       this.updateBodyScrollLock();
     },
+    openBreakdownDialog() {
+      this.showBreakdownDialog = true;
+      this.showChoreSheet = false;
+      this.showSettingsSheet = false;
+      this.showDeleteDialog = false;
+      this.updateBodyScrollLock();
+    },
+    closeBreakdownDialog() {
+      this.showBreakdownDialog = false;
+      this.updateBodyScrollLock();
+    },
 
     // ---------- DERIVED ----------
     get currentChildName() {
@@ -584,7 +596,7 @@ window.choresApp = function choresApp() {
 
     // ---------- SHEETS ----------
     updateBodyScrollLock() {
-      const lock = this.showChoreSheet || this.showSettingsSheet || this.showDeleteDialog;
+      const lock = this.showChoreSheet || this.showSettingsSheet || this.showDeleteDialog || this.showBreakdownDialog;
       document.body.style.overflow = lock ? "hidden" : "";
     },
 
@@ -592,6 +604,7 @@ window.choresApp = function choresApp() {
       this.showChoreSheet = true;
       this.showSettingsSheet = false;
       this.showDeleteDialog = false;
+      this.showBreakdownDialog = false;
       this.pendingDelete = null;
       this.ensureChoreFormChild();
       this.updateBodyScrollLock();
@@ -605,6 +618,7 @@ window.choresApp = function choresApp() {
       this.showSettingsSheet = true;
       this.showChoreSheet = false;
       this.showDeleteDialog = false;
+      this.showBreakdownDialog = false;
       this.pendingDelete = null;
       this.updateBodyScrollLock();
       this.bottomNav = "device";
@@ -727,6 +741,9 @@ window.choresApp = function choresApp() {
         });
         return { id: child.id, name: child.name, total: periodTotal, count: periodCount, last };
       });
+    },
+    get maxChildBreakdownTotal() {
+      return this.childBreakdown.reduce((max, child) => Math.max(max, child.total), 0);
     },
 
     // ---------- FORMAT ----------

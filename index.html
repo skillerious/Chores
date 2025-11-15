@@ -252,17 +252,19 @@
           <div class="mobile-statusbar"></div>
 
           <header class="app-topbar">
-            <div class="period-pill full-pill">
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-calendar"></use></svg>
-              <select id="period-select" class="chip-select" x-model="period" @change="renderPeriod()">
-                <option value="current">Current</option>
-                <option value="month">This month</option>
-                <option value="all">All time</option>
-              </select>
+            <div class="topbar-track">
+              <div class="period-pill full-pill">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-calendar"></use></svg>
+                <select id="period-select" class="chip-select" x-model="period" @change="renderPeriod()">
+                  <option value="current">Current</option>
+                  <option value="month">This month</option>
+                  <option value="all">All time</option>
+                </select>
+              </div>
+              <button class="icon-btn ghost logout-btn" title="Lock" @click="lockOut">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-logout"></use></svg>
+              </button>
             </div>
-            <button class="icon-btn ghost logout-btn" title="Lock" @click="lockOut">
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-logout"></use></svg>
-            </button>
           </header>
 
           <main id="main-scroll" class="content-scroll">
@@ -316,6 +318,20 @@
                     <span class="stat-label">Window</span>
                     <strong x-text="rangeText"></strong>
                     <small x-text="payoutText"></small>
+                  </div>
+                </div>
+                <div class="hero-ribbon">
+                  <div class="ribbon-cell">
+                    <span>Window</span>
+                    <strong x-text="rangeText"></strong>
+                  </div>
+                  <div class="ribbon-cell">
+                    <span>Payout</span>
+                    <strong>15th</strong>
+                  </div>
+                  <div class="ribbon-cell">
+                    <span>Progress</span>
+                    <strong x-text="totalChoresCount + ' chores'"></strong>
                   </div>
                 </div>
               </div>
@@ -383,6 +399,18 @@
                     <small x-text="recentActivity[0] ? formatDateTime(recentActivity[0].date) : 'Waiting for next chore'"></small>
                   </div>
                 </div>
+                <div class="activity-spark">
+                  <div class="spark-card">
+                    <span class="label">Trending</span>
+                    <strong x-text="totalChoresCount > 0 ? 'On track' : 'Kick things off'"></strong>
+                    <p>Encourage the kids to log another chore today.</p>
+                  </div>
+                  <div class="spark-card">
+                    <span class="label">Top performer</span>
+                    <strong x-text="childBreakdown[0] ? childBreakdown[0].name : 'N/A'"></strong>
+                    <p x-text="childBreakdown[0] ? formatMoney(childBreakdown[0].total) + ' earned this window.' : 'No entries yet.'"></p>
+                  </div>
+                </div>
               </section>
 
               <section class="panel activity-feed">
@@ -397,7 +425,7 @@
                     <p class="tiny muted">No chores logged yet.</p>
                   </template>
                   <template x-for="item in recentActivity" :key="item.id">
-                    <div class="timeline-row">
+                    <div class="timeline-row card-row">
                       <div class="timeline-dot"></div>
                       <div class="timeline-meta">
                         <div class="timeline-title">
@@ -409,6 +437,12 @@
                       <div class="timeline-amount" x-text="formatMoney(item.amount)"></div>
                     </div>
                   </template>
+                </div>
+                <div class="activity-quick">
+                  <div class="activity-tip">
+                    <span>Need more detail?</span>
+                    <button type="button" class="btn-outline" @click="openBreakdownDialog()">View breakdown</button>
+                  </div>
                 </div>
               </section>
 
@@ -538,6 +572,7 @@
               </div>
 
               <div class="settings-content">
+                <img src="assets/devicedialog.png" alt="Device tips" class="device-hero-art" />
                 <p class="muted tiny">
                   Household balances sync to <code>accounts/ledger.json</code> in your GitHub repo using the token saved on this device.
                 </p>
@@ -604,6 +639,43 @@
                 <button type="button" class="btn-outline" @click="cancelDeleteChore()">Keep chore</button>
                 <button type="button" class="btn-primary danger" @click="confirmDeleteChore()">Delete chore</button>
               </div>
+            </div>
+          </div>
+
+          <div
+            class="modal chart-modal"
+            x-cloak
+            x-show="showBreakdownDialog"
+            x-transition.opacity
+          >
+            <div class="modal-overlay" @click="closeBreakdownDialog()"></div>
+            <div class="chart-card" role="dialog" aria-modal="true" x-transition.scale.origin.bottom>
+              <div class="chart-head">
+                <span class="tag soft">Breakdown</span>
+                <h3>Child performance</h3>
+                <p>Rewards earned this period</p>
+              </div>
+              <div class="graph-list">
+                <template x-if="childBreakdown.length === 0">
+                  <p class="tiny muted">No chores logged yet.</p>
+                </template>
+                <template x-for="child in childBreakdown" :key="child.id">
+                  <div class="graph-row">
+                    <div class="graph-label">
+                      <strong x-text="child.name"></strong>
+                      <small x-text="child.count + ' chores'"></small>
+                    </div>
+                    <div class="graph-track">
+                      <div
+                        class="graph-fill"
+                        :style="{'width': maxChildBreakdownTotal ? Math.max(6, Math.round((child.total / maxChildBreakdownTotal) * 100)) + '%' : '0%'}"
+                      ></div>
+                    </div>
+                    <span class="graph-value" x-text="formatMoney(child.total)"></span>
+                  </div>
+                </template>
+              </div>
+              <button type="button" class="btn-primary full" @click="closeBreakdownDialog()">Close</button>
             </div>
           </div>
         </section>

@@ -190,12 +190,19 @@ button{cursor:pointer;background:none;border:none;padding:0}
   z-index:30;
   display:flex;
   align-items:center;
-  gap:.65rem;
+  justify-content:center;
   padding:calc(env(safe-area-inset-top,0px) + .9rem) var(--page-pad) .65rem;
   margin:0;
   background:linear-gradient(160deg,#04142e 0%,#020914 80%);
-  border-bottom:1px solid rgba(13,28,58,.7);
+  border-bottom:1px solid rgba(13,28,58,.85);
   box-shadow:0 24px 40px rgba(0,0,0,.65);
+}
+.topbar-track{
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:.55rem;
+  align-items:center;
 }
 .period-pill{
   display:flex;
@@ -226,6 +233,7 @@ button{cursor:pointer;background:none;border:none;padding:0}
   cursor:pointer;
   outline:none;
 }
+.app-topbar .icon{stroke-width:1.6}
 .app-topbar .icon-btn{
   width:44px;
   height:44px;
@@ -236,7 +244,10 @@ button{cursor:pointer;background:none;border:none;padding:0}
   color:rgba(241,245,255,.8);
   box-shadow:0 10px 24px rgba(0,0,0,.45);
 }
-.app-topbar .logout-btn{flex:0 0 auto}
+.app-topbar .logout-btn{
+  width:44px;
+  justify-self:end;
+}
 /* Auth / login */
 .screen-auth,.screen-login{
   background:radial-gradient(900px 500px at 10% -5%,rgba(75,125,255,.35),transparent 55%),var(--bg-2);
@@ -536,6 +547,29 @@ select::-ms-expand{display:none}
 .child-balance-amount{font-size:1.8rem;font-weight:800}
 .child-balance-period{font-size:.7rem;color:rgba(255,255,255,.75)}
 
+.hero-ribbon{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:.75rem;
+}
+.ribbon-cell{
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(2,6,14,.55);
+  padding:.75rem 1rem;
+  display:flex;
+  flex-direction:column;
+  gap:.15rem;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.ribbon-cell span{
+  font-size:.7rem;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  color:rgba(255,255,255,.55);
+}
+.ribbon-cell strong{font-size:.95rem}
+
 .quick-actions{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(100px,1fr));
@@ -576,7 +610,7 @@ select::-ms-expand{display:none}
 
 .activity-hero{
   margin:0 var(--page-pad);
-  padding:1.3rem 1.4rem;
+  padding:1.25rem 1.4rem 1.4rem;
   border-radius:32px;
   background:linear-gradient(140deg,rgba(14,24,48,.95),rgba(5,10,22,.98));
   border:1px solid rgba(255,255,255,.08);
@@ -605,6 +639,35 @@ select::-ms-expand{display:none}
 .metric-label{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
 .metric-card strong{font-size:1.2rem;font-weight:700}
 .metric-card small{color:var(--muted-2);font-size:.68rem}
+.activity-spark{
+  margin-top:1rem;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:.8rem;
+}
+.spark-card{
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.08);
+  padding:1rem;
+  background:rgba(255,255,255,.02);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.spark-card .label{
+  text-transform:uppercase;
+  letter-spacing:.2em;
+  font-size:.58rem;
+  color:rgba(255,255,255,.55);
+}
+.spark-card strong{
+  display:block;
+  margin:.4rem 0;
+  font-size:1rem;
+}
+.spark-card p{
+  margin:0;
+  font-size:.78rem;
+  color:var(--muted);
+}
 
 .activity-feed .timeline{
   display:flex;flex-direction:column;gap:.7rem;margin-top:.8rem;
@@ -626,6 +689,26 @@ select::-ms-expand{display:none}
 .timeline-title span{font-size:.72rem;color:var(--muted)}
 .timeline-meta small{font-size:.7rem;color:var(--muted-2)}
 .timeline-amount{font-weight:700;color:var(--accent)}
+.activity-feed .card-row{
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.07);
+  padding:.8rem;
+  background:rgba(255,255,255,.02);
+}
+.activity-quick{
+  margin-top:1rem;
+  padding:.9rem 1rem;
+  border-radius:18px;
+  background:linear-gradient(120deg,rgba(6,14,30,.9),rgba(3,7,16,.95));
+  border:1px solid rgba(255,255,255,.06);
+}
+.activity-quick .activity-tip{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.8rem;
+}
+.activity-quick span{font-size:.8rem;color:var(--muted)}
 
 .activity-breakdown{padding-bottom:1.3rem}
 .child-break-grid{
@@ -884,8 +967,61 @@ select::-ms-expand{display:none}
 .dialog-actions .btn-primary{
   flex:1;
 }
+.chart-modal .chart-card{
+  position:relative;
+  width:min(430px,calc(100% - 2*var(--page-pad)));
+  border-radius:28px;
+  padding:1.4rem 1.5rem 1.6rem;
+  border:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(180deg,rgba(10,18,34,.97),rgba(5,9,18,.94));
+  box-shadow:var(--shadow-1);
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+}
+.chart-head h3{margin:.2rem 0;font-size:1.15rem}
+.chart-head p{margin:0;color:var(--muted);font-size:.8rem}
+.graph-list{display:flex;flex-direction:column;gap:.85rem}
+.graph-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:.65rem;
+  align-items:center;
+}
+.graph-label{
+  display:flex;
+  flex-direction:column;
+  gap:.1rem;
+}
+.graph-label strong{font-size:.9rem}
+.graph-label small{font-size:.68rem;color:var(--muted-2)}
+.graph-track{
+  position:relative;
+  width:100%;
+  height:10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  overflow:hidden;
+}
+.graph-fill{
+  position:absolute;
+  top:0;left:0;bottom:0;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-b));
+  transition:width .4s ease;
+}
+.graph-value{font-weight:700;color:var(--accent)}
+.btn-primary.full{width:100%;justify-content:center}
 .sheet-form{display:flex;flex-direction:column;gap:.75rem}
 .settings-content{display:flex;flex-direction:column;gap:.8rem}
+.device-hero-art{
+  width:80%;
+  max-width:260px;
+  border-radius:20px;
+  margin:0 auto .6rem;
+  display:block;
+  box-shadow:0 15px 35px rgba(0,0,0,.45);
+}
 .token-block{
   border:1px solid rgba(64,178,255,.25);
   border-radius:22px;
@@ -971,18 +1107,8 @@ select::-ms-expand{display:none}
 
 @media (max-width:420px){
   .topbar{padding:.85rem var(--page-pad);margin:0 var(--page-pad) .4rem}
-  .app-topbar{
-    padding:calc(env(safe-area-inset-top,0px) + .65rem) var(--page-pad) .55rem;
-    flex-direction:column;
-    align-items:stretch;
-    gap:.5rem;
-  }
-  .period-pill{
-    padding:.55rem .85rem;
-  }
-  .app-topbar .logout-btn{
-    width:100%;
-  }
+  .app-topbar{padding:calc(env(safe-area-inset-top,0px) + .65rem) var(--page-pad) .55rem}
+  .period-pill{padding:.55rem .85rem}
   .child-card-hero{
     flex:0 0 86vw;
     min-width:86vw;
