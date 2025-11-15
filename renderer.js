@@ -40,6 +40,7 @@ window.choresApp = function choresApp() {
 
     showChoreSheet: false,
     showSettingsSheet: false,
+    showDeleteDialog: false,
 
     choreForm: { childId: "", title: "", amount: "" },
 
@@ -47,6 +48,13 @@ window.choresApp = function choresApp() {
     rangeText: "",
     bottomNav: "home",
     navBeforeSheet: "home",
+    mainScrollEl: null,
+    heroScrollAnchor: 80,
+    forceCompactHeader: false,
+    topbarObserver: null,
+    boundResizeHandler: null,
+    topbarCompact: false,
+    pendingDelete: null,
 
     githubToken: "",
     githubStatus: { state: "idle", message: "Not connected", lastSync: null },
@@ -103,6 +111,11 @@ window.choresApp = function choresApp() {
       (this.$nextTick ? this.$nextTick.bind(this) : (fn)=>setTimeout(fn,0))(() => {
         this.setupObservers();
         this.snapActiveCard();
+        this.mainScrollEl = document.getElementById("main-scroll");
+        this.measureHeaderAnchors();
+        this.observeTopbar();
+        this.handleViewportResize();
+        if (this.mainScrollEl) this.handleMainScroll({ target: this.mainScrollEl });
       });
       if (this.githubToken) {
         this.pullLatestLedger(reason);
@@ -117,6 +130,49 @@ window.choresApp = function choresApp() {
       const short = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
       this.rangeText = `${short(start)} - ${short(end)}`;
       this.payoutText = `Showing ${short(start)} - ${short(end)} | Payout on 15th`;
+    },
+
+    handleMainScroll(event) {
+      const offset = event?.target ? event.target.scrollTop || 0 : 0;
+      const shouldCompact = this.forceCompactHeader || offset > this.headerScrollThreshold();
+      if (shouldCompact !== this.topbarCompact) this.topbarCompact = shouldCompact;
+    },
+
+    headerScrollThreshold() {
+      const clamp = Math.max(60, Math.min(this.heroScrollAnchor - 20, 140));
+      return this.forceCompactHeader ? 12 : clamp;
+    },
+
+    measureHeaderAnchors() {
+      const hero = document.getElementById("hero");
+      const main = this.mainScrollEl || document.getElementById("main-scroll");
+      if (!hero || !main) return;
+      const offset = hero.offsetTop || 0;
+      if (offset) this.heroScrollAnchor = offset;
+    },
+
+    handleViewportResize() {
+      const height = window.innerHeight || document.documentElement.clientHeight || 0;
+      const width = window.innerWidth || document.documentElement.clientWidth || 0;
+      const forced = height < 640 || width < 360;
+      if (forced !== this.forceCompactHeader) this.forceCompactHeader = forced;
+      if (!this.mainScrollEl) this.mainScrollEl = document.getElementById("main-scroll");
+      this.measureHeaderAnchors();
+      this.handleMainScroll({ target: this.mainScrollEl || { scrollTop: 0 } });
+    },
+
+    observeTopbar() {
+      if (typeof ResizeObserver === "undefined") return;
+      const topbar = document.querySelector(".app-topbar");
+      if (!topbar) return;
+      if (this.topbarObserver) this.topbarObserver.disconnect();
+      this.topbarObserver = new ResizeObserver((entries) => {
+        entries.forEach((entry) => {
+          const height = entry?.contentRect?.height || topbar.offsetHeight || 0;
+          if (height) document.documentElement.style.setProperty("--app-topbar-height", `${Math.round(height)}px`);
+        });
+      });
+      this.topbarObserver.observe(topbar);
     },
 
     getPeriodRange() {
@@ -283,7 +339,7 @@ window.choresApp = function choresApp() {
     async applyGithubToken(token, persist = true) {
       const trimmed = (token || "").trim();
       if (!trimmed) throw new Error("GitHub token is required.");
-      this.setGithubStatus("verifying", "Verifying GitHub token…");
+      this.setGithubStatus("verifying", "Verifying GitHub token...");
       let profile;
       try {
         profile = await this.verifyGithubToken(trimmed);
@@ -353,7 +409,7 @@ window.choresApp = function choresApp() {
         this.setGithubStatus("warning", "Add GitHub token to sync data");
         return false;
       }
-      this.setGithubStatus("syncing", `Pulling latest (${reason})…`);
+      this.setGithubStatus("syncing", `Pulling latest (${reason})...`);
       try {
         const res = await fetch(this.contentsUrl(true), {
           headers: this.buildGithubHeaders(),
@@ -395,7 +451,7 @@ window.choresApp = function choresApp() {
         this.setGithubStatus("warning", "GitHub token required to sync");
         return false;
       }
-      this.setGithubStatus("syncing", `Saving to GitHub (${reason})…`);
+      this.setGithubStatus("syncing", `Saving to GitHub (${reason})...`);
       try {
         const payload = JSON.stringify(this.data, null, 2);
         const body = {
@@ -413,7 +469,7 @@ window.choresApp = function choresApp() {
           throw new Error("GitHub rejected this token. Replace it via Device settings.");
         }
         if (res.status === 409 || res.status === 422) {
-          this.setGithubStatus("warning", "Remote changed. Re-syncing…");
+          this.setGithubStatus("warning", "Remote changed. Re-syncing...");
           await this.pullLatestLedger("conflict resolution");
           return false;
         }
@@ -525,11 +581,42 @@ window.choresApp = function choresApp() {
       this.saveData(`Removed chore from ${child.name}`);
     },
 
+    promptDeleteChore(childId, chore) {
+      if (!chore) return;
+      const child = this.data.children.find(c => c.id === childId);
+      this.pendingDelete = {
+        childId,
+        childName: child ? child.name : "",
+        choreId: chore.id,
+        title: chore.title || "Chore",
+        amount: Number(chore.amount || 0),
+      };
+      this.showChoreSheet = false;
+      this.showSettingsSheet = false;
+      this.showDeleteDialog = true;
+      this.updateBodyScrollLock();
+    },
+    cancelDeleteChore() {
+      this.showDeleteDialog = false;
+      this.pendingDelete = null;
+      this.updateBodyScrollLock();
+    },
+    confirmDeleteChore() {
+      if (!this.pendingDelete) {
+        this.cancelDeleteChore();
+        return;
+      }
+      this.removeChore(this.pendingDelete.childId, this.pendingDelete.choreId);
+      this.pendingDelete = null;
+      this.showDeleteDialog = false;
+      this.updateBodyScrollLock();
+    },
+
     // ---------- DERIVED ----------
     get currentChildName() {
       return this.data.children[this.currentChildIndex]
         ? this.data.children[this.currentChildIndex].name
-        : "—";
+        : "\u2014";
     },
 
     get currentChildChores() {
@@ -551,26 +638,35 @@ window.choresApp = function choresApp() {
     },
 
     // ---------- SHEETS ----------
+    updateBodyScrollLock() {
+      const lock = this.showChoreSheet || this.showSettingsSheet || this.showDeleteDialog;
+      document.body.style.overflow = lock ? "hidden" : "";
+    },
+
     openChoreSheet() {
       this.showChoreSheet = true;
       this.showSettingsSheet = false;
+      this.showDeleteDialog = false;
+      this.pendingDelete = null;
       this.ensureChoreFormChild();
-      document.body.style.overflow = "hidden";
+      this.updateBodyScrollLock();
     },
     closeChoreSheet() {
       this.showChoreSheet = false;
-      if (!this.showSettingsSheet) document.body.style.overflow = "";
+      this.updateBodyScrollLock();
     },
     openSettingsSheet() {
       this.navBeforeSheet = this.bottomNav;
       this.showSettingsSheet = true;
       this.showChoreSheet = false;
-      document.body.style.overflow = "hidden";
+      this.showDeleteDialog = false;
+      this.pendingDelete = null;
+      this.updateBodyScrollLock();
       this.bottomNav = "device";
     },
     closeSettingsSheet(targetNav) {
       this.showSettingsSheet = false;
-      if (!this.showChoreSheet) document.body.style.overflow = "";
+      this.updateBodyScrollLock();
       if (targetNav) this.bottomNav = targetNav;
       else if (this.bottomNav === "device") this.bottomNav = this.navBeforeSheet || "home";
     },
@@ -589,6 +685,7 @@ window.choresApp = function choresApp() {
     scrollMainTop() {
       const main = document.getElementById("main-scroll");
       if (main) main.scrollTo({ top: 0, behavior: "smooth" });
+      this.topbarCompact = this.forceCompactHeader;
     },
 
     // ---------- UI Polishing ----------
@@ -598,6 +695,9 @@ window.choresApp = function choresApp() {
         carousel.addEventListener("scroll", this.snapActiveCard.bind(this), { passive: true });
         window.addEventListener("resize", this.snapActiveCard.bind(this));
       }
+      if (!this.boundResizeHandler) this.boundResizeHandler = this.handleViewportResize.bind(this);
+      window.addEventListener("resize", this.boundResizeHandler);
+      this.measureHeaderAnchors();
     },
 
     snapActiveCard() {
