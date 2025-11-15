@@ -3,7 +3,14 @@
     {
       "id": "arthur",
       "name": "Arthur",
-      "chores": []
+      "chores": [
+        {
+          "id": "ch_2da5dc3c-6442-4345-80a6-653b88f84a10",
+          "title": "Bedroom",
+          "amount": 2,
+          "date": "2025-11-15T10:36:13.697Z"
+        }
+      ]
     },
     {
       "id": "alfie",
