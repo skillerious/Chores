@@ -32,11 +32,20 @@ window.choresApp = function choresApp() {
 
     lockPassword: "",
     lockError: false,
+    lockErrorMessage: "",
     lockGithubToken: "",
     lockTokenError: "",
     rememberDevice: true,
     hasStoredToken: false,
     requestLockToken: false,
+
+    // Advanced auth state
+    loginAttempts: 0,
+    maxLoginAttempts: 5,
+    lockoutEndTime: null,
+    isAuthenticating: false,
+    passwordStrength: 0,
+    showPasswordStrength: false,
 
     showChoreSheet: false,
     showSettingsSheet: false,
@@ -86,6 +95,20 @@ window.choresApp = function choresApp() {
       if (remembered && cachedPass) this.lockPassword = cachedPass;
       else if (!remembered) this.lockPassword = "";
 
+      // Load auth state
+      const savedAttempts = localStorage.getItem("loginAttempts");
+      if (savedAttempts) this.loginAttempts = parseInt(savedAttempts, 10);
+      const savedLockout = localStorage.getItem("lockoutEndTime");
+      if (savedLockout) {
+        this.lockoutEndTime = parseInt(savedLockout, 10);
+        if (Date.now() >= this.lockoutEndTime) {
+          this.lockoutEndTime = null;
+          this.loginAttempts = 0;
+          localStorage.removeItem("lockoutEndTime");
+          localStorage.removeItem("loginAttempts");
+        }
+      }
+
       // auth gate
       const hasPass = !!localStorage.getItem(LS_PASS);
       if (!hasPass) {
@@ -106,6 +129,7 @@ window.choresApp = function choresApp() {
       (this.$nextTick ? this.$nextTick.bind(this) : (fn)=>setTimeout(fn,0))(() => {
         this.setupObservers();
         this.snapActiveCard();
+        this.setupPullToRefresh();
       });
       if (this.githubToken) {
         this.pullLatestLedger(reason);
@@ -169,15 +193,42 @@ window.choresApp = function choresApp() {
     },
 
     async doUnlock() {
+      // Check if locked out
+      if (this.lockoutEndTime && Date.now() < this.lockoutEndTime) {
+        const remainingSeconds = Math.ceil((this.lockoutEndTime - Date.now()) / 1000);
+        this.lockError = true;
+        this.lockErrorMessage = `Too many attempts. Try again in ${remainingSeconds}s`;
+        setTimeout(() => this.doUnlock(), 1000);
+        return;
+      }
+
+      // Validate input
+      if (!this.lockPassword || this.lockPassword.length < 4) {
+        this.lockError = true;
+        this.lockErrorMessage = "Password is required";
+        return;
+      }
+
       const stored = localStorage.getItem(LS_PASS);
       const saltB64 = localStorage.getItem(LS_SALT);
       if (!stored || !saltB64) { this.activeView = "setup"; return; }
+
+      this.isAuthenticating = true;
+      this.lockError = false;
+      this.lockErrorMessage = "";
+
+      // Simulate network delay for security (prevents timing attacks)
+      await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
 
       const salt = this.base64ToArrayBuffer(saltB64);
       const derived = await this.derivePassword(this.lockPassword, salt);
 
       if (derived === stored) {
         this.lockError = false;
+        this.loginAttempts = 0;
+        this.lockErrorMessage = "";
+        localStorage.removeItem("loginAttempts");
+        localStorage.removeItem("lockoutEndTime");
         const storedToken = localStorage.getItem(LS_TOKEN);
         const tokenNeeded = this.requestLockToken || !storedToken;
         if (tokenNeeded) {
@@ -212,9 +263,34 @@ window.choresApp = function choresApp() {
         const raw = localStorage.getItem(LS_DATA);
         if (raw) { try { this.data = JSON.parse(raw); } catch { this.data = structuredClone(defaultData); } }
 
+        this.isAuthenticating = false;
         this.activateMain("unlock");
       } else {
+        this.isAuthenticating = false;
+        this.loginAttempts++;
+        localStorage.setItem("loginAttempts", this.loginAttempts.toString());
+
+        // Progressive rate limiting
+        if (this.loginAttempts >= this.maxLoginAttempts) {
+          const lockoutDuration = 30000; // 30 seconds
+          this.lockoutEndTime = Date.now() + lockoutDuration;
+          localStorage.setItem("lockoutEndTime", this.lockoutEndTime.toString());
+          this.lockErrorMessage = `Too many attempts. Locked for ${lockoutDuration / 1000} seconds`;
+        } else {
+          const remainingAttempts = this.maxLoginAttempts - this.loginAttempts;
+          this.lockErrorMessage = `Incorrect password. ${remainingAttempts} attempt${remainingAttempts !== 1 ? 's' : ''} remaining`;
+        }
+
         this.lockError = true;
+
+        // Shake animation trigger
+        const card = document.querySelector(".login-card");
+        if (card) {
+          card.style.animation = "none";
+          setTimeout(() => {
+            card.style.animation = "shake 0.5s ease-in-out";
+          }, 10);
+        }
       }
     },
 
@@ -518,6 +594,9 @@ window.choresApp = function choresApp() {
       this.saveData(`Added chore for ${child.name}`);
       this.closeChoreSheet();
       this.choreForm.title = ""; this.choreForm.amount = "";
+
+      // Celebration effect
+      setTimeout(() => this.triggerCelebration(), 100);
     },
 
     removeChore(childId, choreId) {
@@ -762,5 +841,59 @@ window.choresApp = function choresApp() {
     bufferToHex(buffer){ const bytes=new Uint8Array(buffer); return [...bytes].map(b=>b.toString(16).padStart(2,"0")).join(""); },
     base64EncodeString(str){ const enc=new TextEncoder(); return this.arrayBufferToBase64(enc.encode(str).buffer); },
     base64DecodeString(b64){ const dec=new TextDecoder(); return dec.decode(this.base64ToArrayBuffer(b64)); },
+
+    // ---------- MOBILE ENHANCEMENTS ----------
+    setupPullToRefresh() {
+      const mainScroll = document.getElementById("main-scroll");
+      if (!mainScroll || this._ptrSetup) return;
+      this._ptrSetup = true;
+
+      let startY = 0;
+      let pullDistance = 0;
+      const threshold = 80;
+
+      mainScroll.addEventListener("touchstart", (e) => {
+        if (mainScroll.scrollTop === 0) {
+          startY = e.touches[0].pageY;
+        }
+      }, { passive: true });
+
+      mainScroll.addEventListener("touchmove", (e) => {
+        if (mainScroll.scrollTop === 0 && startY > 0) {
+          pullDistance = Math.max(0, e.touches[0].pageY - startY);
+        }
+      }, { passive: true });
+
+      mainScroll.addEventListener("touchend", async () => {
+        if (pullDistance > threshold && this.githubToken) {
+          await this.refreshFromRemote("Pull to refresh");
+        }
+        startY = 0;
+        pullDistance = 0;
+      }, { passive: true });
+
+      // Header scroll effect
+      const topbar = document.querySelector(".app-topbar");
+      if (topbar) {
+        mainScroll.addEventListener("scroll", () => {
+          const scrolled = mainScroll.scrollTop > 20;
+          if (scrolled) {
+            topbar.style.background = "linear-gradient(160deg,rgba(4,20,46,.99) 0%,rgba(2,9,20,.99) 80%)";
+            topbar.style.boxShadow = "0 4px 24px rgba(0,0,0,.7),inset 0 -1px 0 rgba(99,248,201,.12)";
+          } else {
+            topbar.style.background = "";
+            topbar.style.boxShadow = "";
+          }
+        }, { passive: true });
+      }
+    },
+
+    triggerCelebration() {
+      const activeCard = document.querySelector(".child-card-hero.active");
+      if (activeCard) {
+        activeCard.classList.add("celebrate");
+        setTimeout(() => activeCard.classList.remove("celebrate"), 600);
+      }
+    },
   };
 };

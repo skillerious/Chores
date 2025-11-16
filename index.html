@@ -203,30 +203,25 @@
                 <span>Use a different GitHub token</span>
               </button>
 
-              <button class="btn-primary btn-gradient" @click="doUnlock">
-                <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-login"></use></svg>
-                <span>Unlock</span>
+              <button
+                class="btn-primary btn-gradient"
+                @click="doUnlock"
+                :disabled="isAuthenticating || (lockoutEndTime && Date.now() < lockoutEndTime)"
+              >
+                <svg class="icon" aria-hidden="true" focusable="false" x-show="!isAuthenticating"><use href="#icon-login"></use></svg>
+                <svg class="icon ptr-spinner" aria-hidden="true" focusable="false" x-show="isAuthenticating"></svg>
+                <span x-text="isAuthenticating ? 'Authenticating...' : 'Unlock'"></span>
               </button>
 
-
+              <p class="error-text" x-cloak x-show="lockError" x-text="lockErrorMessage || 'Incorrect password'"></p>
+              <p class="error-text" x-cloak x-show="lockTokenError" x-text="lockTokenError"></p>
 
               <div class="inline-actions">
-
                 <button type="button" class="text-btn" @click="resetDevice">
-
                   <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-restart"></use></svg>
-
                   <span>Reset this device</span>
-
                 </button>
-
               </div>
-
-
-
-              <p class="error-text" x-show="lockError">Incorrect password.</p>
-
-              <p class="error-text" x-show="lockTokenError" x-text="lockTokenError"></p>
 
 
 
