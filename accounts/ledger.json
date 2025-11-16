@@ -3,7 +3,14 @@
     {
       "id": "arthur",
       "name": "Arthur",
-      "chores": []
+      "chores": [
+        {
+          "id": "ch_c7e95b26-aca9-433a-a6b0-98d67522161c",
+          "title": "Brushed Teeth",
+          "amount": 1,
+          "date": "2025-11-16T20:55:37.863Z"
+        }
+      ]
     },
     {
       "id": "alfie",
