@@ -46,6 +46,19 @@ window.choresApp = function choresApp() {
     isAuthenticating: false,
     passwordStrength: 0,
     showPasswordStrength: false,
+    passwordRequirements: {
+      minLength: false,
+      hasLetter: false,
+      hasNumber: false,
+      hasSpecial: false,
+    },
+    showPassword: false,
+    showGithubToken: false,
+
+    // Session management
+    sessionStartTime: null,
+    lastActivityTime: null,
+    sessionLogs: [],
 
     showChoreSheet: false,
     showSettingsSheet: false,
@@ -124,6 +137,7 @@ window.choresApp = function choresApp() {
 
     activateMain(reason = "login") {
       this.activeView = "main";
+      this.startSession(reason);
       this.renderPeriod();
       this.ensureChoreFormChild();
       (this.$nextTick ? this.$nextTick.bind(this) : (fn)=>setTimeout(fn,0))(() => {
@@ -229,6 +243,7 @@ window.choresApp = function choresApp() {
         this.lockErrorMessage = "";
         localStorage.removeItem("loginAttempts");
         localStorage.removeItem("lockoutEndTime");
+        this.addSecurityLog("auth_success", "Successful authentication", "info");
         const storedToken = localStorage.getItem(LS_TOKEN);
         const tokenNeeded = this.requestLockToken || !storedToken;
         if (tokenNeeded) {
@@ -282,6 +297,7 @@ window.choresApp = function choresApp() {
         }
 
         this.lockError = true;
+        this.addSecurityLog("auth_failed", `Failed login attempt (${this.loginAttempts}/${this.maxLoginAttempts})`, "warning");
 
         // Shake animation trigger
         const card = document.querySelector(".login-card");
@@ -291,10 +307,16 @@ window.choresApp = function choresApp() {
             card.style.animation = "shake 0.5s ease-in-out";
           }, 10);
         }
+
+        // Log lockout if applicable
+        if (this.loginAttempts >= this.maxLoginAttempts) {
+          this.addSecurityLog("account_locked", "Account locked due to excessive failed attempts", "error");
+        }
       }
     },
 
     lockOut(forceForget = false) {
+      this.endSession("logout");
       if (forceForget) {
         localStorage.removeItem(LS_REMEMBER);
         localStorage.removeItem(LS_PASS_CACHE);
@@ -894,6 +916,174 @@ window.choresApp = function choresApp() {
         activeCard.classList.add("celebrate");
         setTimeout(() => activeCard.classList.remove("celebrate"), 600);
       }
+    },
+
+    // ---------- SECURITY & VALIDATION ----------
+    calculatePasswordStrength(password) {
+      if (!password) {
+        this.passwordStrength = 0;
+        this.passwordRequirements = {
+          minLength: false,
+          hasLetter: false,
+          hasNumber: false,
+          hasSpecial: false,
+        };
+        return;
+      }
+
+      let strength = 0;
+      const requirements = {
+        minLength: password.length >= 8,
+        hasLetter: /[a-zA-Z]/.test(password),
+        hasNumber: /\d/.test(password),
+        hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+      };
+
+      this.passwordRequirements = requirements;
+
+      // Base strength
+      if (requirements.minLength) strength += 25;
+      if (requirements.hasLetter) strength += 25;
+      if (requirements.hasNumber) strength += 25;
+      if (requirements.hasSpecial) strength += 25;
+
+      // Bonus for length
+      if (password.length >= 12) strength += 10;
+      if (password.length >= 16) strength += 10;
+
+      // Bonus for mixed case
+      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 5;
+
+      this.passwordStrength = Math.min(100, strength);
+      this.showPasswordStrength = password.length > 0;
+    },
+
+    getPasswordStrengthText() {
+      if (this.passwordStrength === 0) return "";
+      if (this.passwordStrength < 40) return "Weak";
+      if (this.passwordStrength < 70) return "Fair";
+      if (this.passwordStrength < 90) return "Good";
+      return "Excellent";
+    },
+
+    getPasswordStrengthColor() {
+      if (this.passwordStrength < 40) return "#ff6b6b";
+      if (this.passwordStrength < 70) return "#ffb36f";
+      if (this.passwordStrength < 90) return "#4b7dff";
+      return "#63f8c9";
+    },
+
+    validateGithubToken(token) {
+      if (!token) return { valid: false, message: "" };
+
+      const trimmed = token.trim();
+
+      // Check format
+      if (!trimmed.startsWith("ghp_") && !trimmed.startsWith("github_pat_")) {
+        return { valid: false, message: "Token should start with 'ghp_' or 'github_pat_'" };
+      }
+
+      // Check length
+      if (trimmed.length < 40) {
+        return { valid: false, message: "Token appears too short" };
+      }
+
+      return { valid: true, message: "Token format valid" };
+    },
+
+    // ---------- SESSION MANAGEMENT ----------
+    startSession(reason = "login") {
+      this.sessionStartTime = Date.now();
+      this.lastActivityTime = Date.now();
+      this.addSecurityLog("session_start", `Session started: ${reason}`, "info");
+      this.loadSessionLogs();
+    },
+
+    endSession(reason = "logout") {
+      if (this.sessionStartTime) {
+        const duration = Date.now() - this.sessionStartTime;
+        const durationMinutes = Math.round(duration / 60000);
+        this.addSecurityLog("session_end", `Session ended: ${reason} (duration: ${durationMinutes}m)`, "info");
+        this.sessionStartTime = null;
+        this.lastActivityTime = null;
+      }
+    },
+
+    updateActivity() {
+      this.lastActivityTime = Date.now();
+    },
+
+    getSessionDuration() {
+      if (!this.sessionStartTime) return 0;
+      return Math.round((Date.now() - this.sessionStartTime) / 60000);
+    },
+
+    addSecurityLog(eventType, message, severity = "info") {
+      const log = {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        eventType,
+        message,
+        severity,
+      };
+
+      this.sessionLogs.unshift(log);
+
+      // Keep only last 50 logs
+      if (this.sessionLogs.length > 50) {
+        this.sessionLogs = this.sessionLogs.slice(0, 50);
+      }
+
+      // Persist logs
+      this.saveSessionLogs();
+    },
+
+    loadSessionLogs() {
+      try {
+        const stored = localStorage.getItem("chores.security.logs");
+        if (stored) {
+          this.sessionLogs = JSON.parse(stored);
+        }
+      } catch (e) {
+        this.sessionLogs = [];
+      }
+    },
+
+    saveSessionLogs() {
+      try {
+        localStorage.setItem("chores.security.logs", JSON.stringify(this.sessionLogs));
+      } catch (e) {
+        // Storage might be full, keep only last 20
+        this.sessionLogs = this.sessionLogs.slice(0, 20);
+        localStorage.setItem("chores.security.logs", JSON.stringify(this.sessionLogs));
+      }
+    },
+
+    clearSecurityLogs() {
+      if (confirm("Clear all security logs?")) {
+        this.sessionLogs = [];
+        localStorage.removeItem("chores.security.logs");
+        this.addSecurityLog("logs_cleared", "Security logs cleared by user", "warning");
+      }
+    },
+
+    get recentSecurityLogs() {
+      return this.sessionLogs.slice(0, 10);
+    },
+
+    formatLogTime(isoString) {
+      const date = new Date(isoString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString();
     },
   };
 };
