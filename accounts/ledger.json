@@ -3,14 +3,7 @@
     {
       "id": "arthur",
       "name": "Arthur",
-      "chores": [
-        {
-          "id": "ch_98f78e63-68e6-4f52-a921-bbe4c378daaf",
-          "title": "Clean Room",
-          "amount": 5,
-          "date": "2025-11-15T11:02:50.333Z"
-        }
-      ]
+      "chores": []
     },
     {
       "id": "alfie",
